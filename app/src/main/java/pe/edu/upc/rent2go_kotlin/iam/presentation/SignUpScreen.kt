@@ -1,0 +1,159 @@
+package pe.edu.upc.rent2go_kotlin.iam.presentation
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
+import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
+
+@Composable
+fun SignUpScreen(
+    onContinueClick: () -> Unit,
+    onLoginClick: () -> Unit
+) {
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .verticalScroll(scrollState),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Spacer(modifier = Modifier.height(40.dp))
+
+        // Logo
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Rent", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(text = "2", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryCyan)
+            Text(text = "Go", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        Text(
+            text = "Crea tu cuenta\nen Rent2Go.",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            lineHeight = 40.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Empezamos con tus datos básicos. Después elegirás cómo usar la app.",
+            fontSize = 16.sp,
+            color = TextGray
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Steps Indicator
+        Surface(
+            color = Color(0xFF1B2336),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                StepItem("01", "Datos", true)
+                StepItem("02", "Tipo cuenta", false)
+                StepItem("03", "Validación", false)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        InputField(label = "Nombre completo", value = fullName, onValueChange = { fullName = it })
+        Spacer(modifier = Modifier.height(16.dp))
+        InputField(label = "Correo electrónico", value = email, onValueChange = { email = it })
+        Spacer(modifier = Modifier.height(16.dp))
+        InputField(label = "Teléfono", value = phone, onValueChange = { phone = it })
+        Spacer(modifier = Modifier.height(16.dp))
+        InputField(label = "Contraseña", value = password, onValueChange = { password = it }, isPassword = true)
+        
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = {
+                if (fullName.isNotBlank() && email.isNotBlank()) {
+                    onContinueClick()
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(text = "Continuar", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "¿Ya tienes cuenta? ", color = Color.White, fontSize = 14.sp)
+            TextButton(
+                onClick = onLoginClick,
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(text = "Iniciar sesión", color = PrimaryCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun StepItem(number: String, label: String, isActive: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = number, color = if (isActive) Color.White else TextGray, fontSize = 12.sp, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal)
+        Text(text = label, color = if (isActive) Color.White else TextGray, fontSize = 10.sp, fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal)
+    }
+}
+
+@Composable
+fun InputField(label: String, value: String, onValueChange: (String) -> Unit, isPassword: Boolean = false) {
+    Column {
+        Text(text = label, color = Color.White, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFF1B2336),
+                unfocusedContainerColor = Color(0xFF1B2336),
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White
+            ),
+            shape = RoundedCornerShape(8.dp)
+        )
+    }
+}
