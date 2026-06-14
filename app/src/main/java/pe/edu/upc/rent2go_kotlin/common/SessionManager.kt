@@ -12,13 +12,21 @@ object SessionManager {
     private const val KEY_EMAIL = "user_email"
     private const val KEY_PHONE = "user_phone"
     private const val KEY_ROLE = "user_role"
+    private const val KEY_REMEMBER_ME = "remember_me"
 
     private var sharedPreferences: SharedPreferences? = null
 
     fun initialize(context: Context) {
         if (sharedPreferences == null) {
             sharedPreferences = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (!getPrefs().getBoolean(KEY_REMEMBER_ME, false)) {
+                clearSession()
+            }
         }
+    }
+
+    fun setRememberMe(rememberMe: Boolean) {
+        getPrefs().edit().putBoolean(KEY_REMEMBER_ME, rememberMe).apply()
     }
 
     private fun getPrefs(): SharedPreferences {

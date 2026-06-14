@@ -146,7 +146,7 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                viewModel.login {
+                viewModel.login(rememberMe = rememberMe) {
                     onLoginClick()
                 }
             },

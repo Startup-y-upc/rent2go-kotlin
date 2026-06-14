@@ -57,11 +57,13 @@ class AuthViewModel(
         errorMessage = null
     }
 
-    fun login(onSuccess: () -> Unit) {
+    fun login(rememberMe: Boolean, onSuccess: () -> Unit) {
         if (loginEmail.isBlank() || loginPassword.isBlank()) {
             errorMessage = "Por favor, complete todos los campos."
             return
         }
+
+        pe.edu.upc.rent2go_kotlin.common.SessionManager.setRememberMe(rememberMe)
 
         viewModelScope.launch {
             isLoading = true
