@@ -22,9 +22,11 @@ import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingConfirmationScreen
 fun SetupNavGraph(navController: NavHostController) {
     val authViewModel: AuthViewModel = viewModel()
 
+    val startDestination = if (authViewModel.currentUser != null) "car_list" else "login"
+
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = startDestination
     ) {
         composable(route = "login") {
             LoginScreen(
