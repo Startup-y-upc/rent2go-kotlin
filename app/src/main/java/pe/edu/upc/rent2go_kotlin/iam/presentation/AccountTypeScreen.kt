@@ -3,6 +3,8 @@ package pe.edu.upc.rent2go_kotlin.iam.presentation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -22,14 +24,17 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
 @Composable
 fun AccountTypeScreen(
-    onContinueClick: (String) -> Unit
+    viewModel: AuthViewModel,
+    onContinueClick: () -> Unit
 ) {
-    var selectedType by remember { mutableStateOf("RENTER") }
+
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(24.dp)
+            .verticalScroll(scrollState),
         horizontalAlignment = Alignment.Start
     ) {
         Spacer(modifier = Modifier.height(40.dp))
@@ -66,8 +71,8 @@ fun AccountTypeScreen(
             description = "Encuentra el coche perfecto cerca de ti. Reserva por horas o días.",
             items = listOf("Buscar y reservar coches", "Pagar de forma segura", "Mensajes con propietarios"),
             icon = Icons.Default.DirectionsCar,
-            isSelected = selectedType == "RENTER",
-            onClick = { selectedType = "RENTER" }
+            isSelected = viewModel.selectedAccountType == "RENTER",
+            onClick = { viewModel.selectedAccountType = "RENTER" }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -77,26 +82,45 @@ fun AccountTypeScreen(
             description = "Convierte tu coche parado en ingresos. Tú decides precio y disponibilidad.",
             items = listOf("Publicar tu vehículo", "Gestionar reservas", "Cobrar mensualmente"),
             icon = Icons.Default.Person,
-            isSelected = selectedType == "OWNER",
-            onClick = { selectedType = "OWNER" }
+            isSelected = viewModel.selectedAccountType == "OWNER",
+            onClick = { viewModel.selectedAccountType = "OWNER" }
         )
 
         Spacer(modifier = Modifier.weight(1f))
 
+        if (viewModel.errorMessage != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = viewModel.errorMessage ?: "",
+                color = Color.Red,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         Button(
-            onClick = { onContinueClick(selectedType) },
+            onClick = {
+                viewModel.register {
+                    onContinueClick()
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            enabled = !viewModel.isLoading
         ) {
-            Text(
-                text = "Continuar como ${if (selectedType == "RENTER") "arrendatario" else "propietario"}",
-                color = Color.Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
+            if (viewModel.isLoading) {
+                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+            } else {
+                Text(
+                    text = "Continuar como ${if (viewModel.selectedAccountType == "RENTER") "arrendatario" else "propietario"}",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -143,7 +167,7 @@ fun AccountTypeCard(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = TextGray.copy(alpha = 0.2f))
+            HorizontalDivider(color = TextGray.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(8.dp))
             items.forEach { item ->
                 Row(verticalAlignment = Alignment.CenterVertically) {

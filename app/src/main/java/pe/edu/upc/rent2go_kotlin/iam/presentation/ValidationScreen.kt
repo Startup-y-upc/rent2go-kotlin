@@ -1,5 +1,6 @@
 package pe.edu.upc.rent2go_kotlin.iam.presentation
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +21,7 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
 @Composable
 fun ValidationScreen(
+    viewModel: AuthViewModel,
     onFinishClick: () -> Unit
 ) {
     Column(
@@ -71,20 +73,62 @@ fun ValidationScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Button(
-            onClick = onFinishClick,
+        if (viewModel.errorMessage != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = viewModel.errorMessage ?: "",
+                color = Color.Red,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
-            shape = RoundedCornerShape(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Enviar",
-                color = Color.Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
+            OutlinedButton(
+                onClick = onFinishClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                border = BorderStroke(1.dp, Color.White),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "Omitir",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+
+            Button(
+                onClick = {
+                    viewModel.submitKyc {
+                        onFinishClick()
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !viewModel.isLoading
+            ) {
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(
+                        text = "Enviar",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
