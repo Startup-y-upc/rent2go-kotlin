@@ -5,9 +5,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import pe.edu.upc.rent2go_kotlin.catalog.data.Rent2GoApi
-import pe.edu.upc.rent2go_kotlin.catalog.data.MockCarRepositoryImpl
-import pe.edu.upc.rent2go_kotlin.catalog.domain.CarRepository
-import pe.edu.upc.rent2go_kotlin.catalog.domain.GetCarsUseCase
+import pe.edu.upc.rent2go_kotlin.catalog.data.VehicleRepositoryImpl
+import pe.edu.upc.rent2go_kotlin.catalog.domain.VehicleRepository
 import pe.edu.upc.rent2go_kotlin.iam.data.AuthApi
 import pe.edu.upc.rent2go_kotlin.iam.data.AuthRepositoryImpl
 import pe.edu.upc.rent2go_kotlin.iam.domain.AuthRepository
@@ -52,10 +51,7 @@ object DependencyProvider {
     private val communityApi: CommunityApi = retrofit.create(CommunityApi::class.java)
 
     // Repositories
-    private val carRepository: CarRepository = MockCarRepositoryImpl()
+    val vehicleRepository: VehicleRepository = VehicleRepositoryImpl(api)
     val authRepository: AuthRepository = AuthRepositoryImpl(authApi)
     val communityRepository: CommunityRepository = CommunityRepositoryImpl(communityApi)
-
-    // Use Cases
-    val getCarsUseCase: GetCarsUseCase = GetCarsUseCase(carRepository)
 }
