@@ -1,0 +1,22 @@
+package pe.edu.upc.rent2go_kotlin.iam.data
+
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.POST
+
+interface AuthApi {
+    @POST("api/v1/auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    @POST("api/v1/auth/register")
+    suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
+
+    @POST("api/v1/auth/kyc")
+    suspend fun submitKyc(@Body request: SubmitKycRequest): Response<Unit>
+
+    @POST("api/v1/auth/password/request")
+    suspend fun requestPasswordReset(@Body request: PasswordResetRequest): Response<Unit>
+
+    @POST("api/v1/auth/password/reset")
+    suspend fun confirmPasswordReset(@Body request: PasswordResetConfirm): Response<Unit>
+}
