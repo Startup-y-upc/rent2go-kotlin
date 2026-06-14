@@ -15,6 +15,7 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.Rent2gokotlinTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pe.edu.upc.rent2go_kotlin.common.SessionManager.initialize(applicationContext)
         enableEdgeToEdge()
         setContent {
             Rent2gokotlinTheme {

@@ -10,8 +10,38 @@ class MockAuthRepositoryImpl : AuthRepository {
         return User(1, "Usuario de Prueba", email, "999888777", "RENTER")
     }
 
-    override suspend fun register(fullName: String, email: String, phone: String, password: String): User {
+    override suspend fun register(
+        username: String,
+        fullName: String,
+        email: String,
+        phone: String,
+        password: String,
+        accountType: String
+    ): User {
         delay(1000)
-        return User(2, fullName, email, phone, "RENTER")
+        return User(2, fullName, email, phone, accountType)
+    }
+
+    override suspend fun submitKyc(
+        userId: Int,
+        fullName: String,
+        idNumber: String,
+        dniFrontUrl: String,
+        dniBackUrl: String,
+        driverLicenseUrl: String
+    ): Boolean {
+        delay(1000)
+        return true
+    }
+
+    override suspend fun requestPasswordReset(email: String): Boolean {
+        delay(1000)
+        return true
+    }
+
+    override suspend fun confirmPasswordReset(token: String, newPassword: String): Boolean {
+        delay(1000)
+        return true
     }
 }
+

@@ -9,6 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -19,13 +22,10 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
 @Composable
 fun SignUpScreen(
+    viewModel: AuthViewModel,
     onContinueClick: () -> Unit,
     onLoginClick: () -> Unit
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
 
     Column(
@@ -82,19 +82,20 @@ fun SignUpScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        InputField(label = "Nombre completo", value = fullName, onValueChange = { fullName = it })
+        InputField(label = "Nombre completo", value = viewModel.registerFullName, onValueChange = { viewModel.registerFullName = it })
         Spacer(modifier = Modifier.height(16.dp))
-        InputField(label = "Correo electrónico", value = email, onValueChange = { email = it })
+        InputField(label = "Correo electrónico", value = viewModel.registerEmail, onValueChange = { viewModel.registerEmail = it })
         Spacer(modifier = Modifier.height(16.dp))
-        InputField(label = "Teléfono", value = phone, onValueChange = { phone = it })
+        InputField(label = "Teléfono", value = viewModel.registerPhone, onValueChange = { viewModel.registerPhone = it })
         Spacer(modifier = Modifier.height(16.dp))
-        InputField(label = "Contraseña", value = password, onValueChange = { password = it }, isPassword = true)
+        InputField(label = "Contraseña", value = viewModel.registerPassword, onValueChange = { viewModel.registerPassword = it }, isPassword = true)
         
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
             onClick = {
-                if (fullName.isNotBlank() && email.isNotBlank()) {
+                if (viewModel.registerFullName.isNotBlank() && viewModel.registerEmail.isNotBlank() &&
+                    viewModel.registerPhone.isNotBlank() && viewModel.registerPassword.isNotBlank()) {
                     onContinueClick()
                 }
             },
@@ -137,6 +138,8 @@ fun StepItem(number: String, label: String, isActive: Boolean) {
 
 @Composable
 fun InputField(label: String, value: String, onValueChange: (String) -> Unit, isPassword: Boolean = false) {
+    var passwordVisible by remember { mutableStateOf(false) }
+
     Column {
         Text(text = label, color = Color.White, fontSize = 14.sp)
         Spacer(modifier = Modifier.height(8.dp))
@@ -144,7 +147,16 @@ fun InputField(label: String, value: String, onValueChange: (String) -> Unit, is
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+            trailingIcon = if (isPassword) {
+                {
+                    val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                    val description = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description, tint = Color.White)
+                    }
+                }
+            } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color(0xFF1B2336),
                 unfocusedContainerColor = Color(0xFF1B2336),
