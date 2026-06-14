@@ -90,11 +90,17 @@ fun SetupNavGraph(navController: NavHostController) {
         }
         composable(route = "car_list") {
             MainDashboard(
+                authViewModel = authViewModel,
                 onCarClick = { carId ->
                     navController.navigate("car_detail/$carId")
                 },
                 onChatClick = { userName ->
                     navController.navigate("chat_detail/$userName")
+                },
+                onLogoutClick = {
+                    navController.navigate("login") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
             )
         }

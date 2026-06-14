@@ -16,13 +16,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingsScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.MessagesScreen
+import pe.edu.upc.rent2go_kotlin.iam.presentation.AuthViewModel
 import pe.edu.upc.rent2go_kotlin.community.presentation.ProfileScreen
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 
 @Composable
 fun MainDashboard(
+    authViewModel: AuthViewModel,
     onCarClick: (Int) -> Unit,
-    onChatClick: (String) -> Unit
+    onChatClick: (String) -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     var selectedScreen by remember { mutableStateOf("Explorar") }
 
@@ -32,7 +35,10 @@ fun MainDashboard(
             "Explorar" -> ExploreScreen(onCarClick = onCarClick)
             "Reservas" -> BookingsScreen()
             "Mensajes" -> MessagesScreen(onChatClick = onChatClick)
-            "Perfil" -> ProfileScreen()
+            "Perfil" -> ProfileScreen(
+                authViewModel = authViewModel,
+                onLogoutClick = onLogoutClick
+            )
         }
 
         // Bottom Navigation Bar

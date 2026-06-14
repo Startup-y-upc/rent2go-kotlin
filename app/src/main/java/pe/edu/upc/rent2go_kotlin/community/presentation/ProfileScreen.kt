@@ -2,6 +2,8 @@ package pe.edu.upc.rent2go_kotlin.community.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,14 +23,30 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
+import pe.edu.upc.rent2go_kotlin.iam.presentation.AuthViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.automirrored.filled.Logout
+
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(
+    authViewModel: AuthViewModel,
+    profileViewModel: ProfileViewModel = viewModel(),
+    onLogoutClick: () -> Unit
+) {
+    val user = authViewModel.currentUser
     var profileUploaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(user) {
+        if (user != null) {
+            profileViewModel.loadUserReputation(user.id)
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(LightBlueBg)
+            .verticalScroll(rememberScrollState())
     ) {
         // Header
         Surface(
@@ -64,13 +82,13 @@ fun ProfileScreen() {
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "Diego Sánchez",
+                            text = user?.fullName ?: "Usuario de Prueba",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         Text(
-                            text = "Miembro desde 2023",
+                            text = user?.email ?: "usuario@rent2go.com",
                             fontSize = 14.sp,
                             color = TextGray
                         )
@@ -83,16 +101,16 @@ fun ProfileScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    StatItem("18", "Viajes")
-                    StatItem("4.92", "Valoración")
-                    StatItem("100%", "Aceptación")
+                    StatItem(profileViewModel.completedTrips.toString(), "Viajes")
+                    StatItem(String.format("%.2f", profileViewModel.averageRating), "Valoración")
+                    StatItem("${profileViewModel.acceptanceRate.toInt()}%", "Aceptación")
                 }
             }
         }
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(16.dp)
         ) {
             // Verification Card
@@ -144,7 +162,7 @@ fun ProfileScreen() {
             
             // Placeholder for lower section
             Surface(
-                modifier = Modifier.fillMaxWidth().height(200.dp),
+                modifier = Modifier.fillMaxWidth().height(120.dp),
                 color = Color.White.copy(alpha = 0.4f),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -152,6 +170,37 @@ fun ProfileScreen() {
                     Text("Configuración de la cuenta", color = Color.Black.copy(alpha = 0.5f))
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Cerrar Sesión Button
+            Button(
+                onClick = {
+                    authViewModel.logout {
+                        onLogoutClick()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4D4D)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Cerrar Sesión",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
