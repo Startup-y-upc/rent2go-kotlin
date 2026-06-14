@@ -12,15 +12,15 @@ class AuthRepositoryImpl(
             val response = api.login(LoginRequest(email = email, password = password))
             if (response.isSuccessful) {
                 val body = response.body() ?: throw Exception("Respuesta del servidor vacía")
-                // Aquí guardaríamos el token en un gestor local si fuera necesario.
-                // body.token contiene el token JWT recibido.
-                return User(
+                val user = User(
                     id = body.userId,
                     fullName = body.fullName,
                     email = body.email,
                     phone = body.phone,
                     role = body.accountType
                 )
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveSession(body.token, user)
+                return user
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Credenciales incorrectas"
                 throw Exception(errorMsg)

@@ -19,6 +19,18 @@ object DependencyProvider {
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
+        .addInterceptor { chain ->
+            val originalRequest = chain.request()
+            val token = SessionManager.getToken()
+            if (token != null) {
+                val newRequest = originalRequest.newBuilder()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+                chain.proceed(newRequest)
+            } else {
+                chain.proceed(originalRequest)
+            }
+        }
         .build()
 
     private val retrofit = Retrofit.Builder()

@@ -39,6 +39,13 @@ class AuthViewModel(
     var isAuthSuccess by mutableStateOf(false)
     var isKycSuccess by mutableStateOf(false)
 
+    init {
+        currentUser = pe.edu.upc.rent2go_kotlin.common.SessionManager.getUser()
+        if (currentUser != null) {
+            isAuthSuccess = true
+        }
+    }
+
     // Password Reset Form State
     var passwordResetEmail by mutableStateOf("")
     var passwordResetToken by mutableStateOf("")
@@ -193,5 +200,14 @@ class AuthViewModel(
                 isLoading = false
             }
         }
+    }
+
+    fun logout(onSuccess: () -> Unit) {
+        pe.edu.upc.rent2go_kotlin.common.SessionManager.clearSession()
+        currentUser = null
+        isAuthSuccess = false
+        loginEmail = ""
+        loginPassword = ""
+        onSuccess()
     }
 }
