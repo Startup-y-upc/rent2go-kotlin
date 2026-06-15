@@ -53,6 +53,7 @@ fun ExploreScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(LightBlueBg)
+            .statusBarsPadding()
     ) {
         // Search Bar
         Surface(

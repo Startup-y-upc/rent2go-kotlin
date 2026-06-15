@@ -45,6 +45,7 @@ fun MainDashboard(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(16.dp)
                 .fillMaxWidth()
                 .height(70.dp),
