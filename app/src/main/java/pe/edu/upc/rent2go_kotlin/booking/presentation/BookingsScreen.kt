@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -20,16 +19,48 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import pe.edu.upc.rent2go_kotlin.booking.domain.Booking
+import pe.edu.upc.rent2go_kotlin.catalog.domain.Vehicle
+import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.DarkBlue
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
 @Composable
-fun BookingsScreen() {
+fun BookingsScreen(
+    viewModel: BookingsViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return BookingsViewModel(
+                    DependencyProvider.bookingRepository,
+                    DependencyProvider.vehicleRepository
+                ) as T
+            }
+        }
+    )
+) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Próximas", "Activas", "Pasadas")
+    val state = viewModel.state.value
+
+    LaunchedEffect(Unit) {
+        viewModel.loadBookings()
+    }
+
+    val filteredBookings = remember(state.bookings, selectedTab) {
+        state.bookings.filter { booking ->
+            when (selectedTab) {
+                0 -> booking.status == "PENDING" || booking.status == "CONFIRMED"
+                1 -> booking.status == "ACTIVE"
+                2 -> booking.status == "COMPLETED" || booking.status == "CANCELLED" || booking.status == "EXPIRED"
+                else -> false
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -109,29 +140,80 @@ fun BookingsScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-            item {
-                NextBookingCard()
-            }
-            
-            item {
-                Text(
-                    text = "Anteriores",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            
-            items(previousBookings) { booking ->
-                PreviousBookingItem(booking)
+            if (state.isLoading) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(50.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = PrimaryCyan)
+                    }
+                }
+            } else if (state.error.isNotBlank()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(state.error, color = Color.Red, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.loadBookings() }) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
+            } else if (filteredBookings.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(80.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No tienes reservas en esta sección.",
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            } else {
+                if (selectedTab == 0 || selectedTab == 1) {
+                    val nextBooking = filteredBookings.first()
+                    val vehicle = state.vehicles[nextBooking.vehicleId]
+                    item {
+                        NextBookingCard(nextBooking, vehicle)
+                    }
+                    
+                    if (filteredBookings.size > 1) {
+                        item {
+                            Text(
+                                text = "Otras reservas",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        items(filteredBookings.drop(1)) { booking ->
+                            val v = state.vehicles[booking.vehicleId]
+                            PreviousBookingItem(booking, v)
+                        }
+                    }
+                } else {
+                    items(filteredBookings) { booking ->
+                        val v = state.vehicles[booking.vehicleId]
+                        PreviousBookingItem(booking, v)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun NextBookingCard() {
+fun NextBookingCard(booking: Booking, vehicle: Vehicle?) {
+    val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
+    val yearAndCategory = if (vehicle != null) "${vehicle.categoryName} · ${vehicle.year}" else ""
+    val imageUrl = vehicle?.primaryImageUrl ?: ""
+    val location = booking.pickupLocation
+
     Surface(
         color = DarkBlue,
         shape = RoundedCornerShape(24.dp),
@@ -142,10 +224,15 @@ fun NextBookingCard() {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(PrimaryCyan, CircleShape)
+                        .background(getStatusColor(booking.status), CircleShape)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Próxima", color = PrimaryCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = getStatusText(booking.status),
+                    color = getStatusColor(booking.status),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -155,15 +242,19 @@ fun NextBookingCard() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Tesla Model 3", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("Long Range · 2024", color = TextGray, fontSize = 14.sp)
+                    Text(carName, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(yearAndCategory, color = TextGray, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("S/ ${String.format("%.2f", booking.totalAmount)}", color = PrimaryCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
-                AsyncImage(
-                    model = "https://platform.cstatic-images.com/xlarge/in/v2/stock_photos/06981146-24e5-472e-8344-9040d2165249/098797f1-8404-45e0-9944-80226c6d0426.png",
-                    contentDescription = null,
-                    modifier = Modifier.size(100.dp, 60.dp).clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                if (imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.size(100.dp, 60.dp).clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(20.dp))
@@ -175,12 +266,12 @@ fun NextBookingCard() {
             ) {
                 Column {
                     Text("Recoge", color = TextGray, fontSize = 12.sp)
-                    Text("12 May · 10:00", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(booking.startDate, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Text("-----------", color = TextGray.copy(alpha = 0.3f))
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Devuelve", color = TextGray, fontSize = 12.sp)
-                    Text("14 May · 18:00", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(booking.endDate, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
             
@@ -195,17 +286,8 @@ fun NextBookingCard() {
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Lucía M.", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("Calle Goya 24", color = TextGray, fontSize = 12.sp)
-                }
-                Button(
-                    onClick = { /* TODO */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.height(40.dp).width(100.dp),
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Text("Abrir", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Código: ${booking.reservationCode}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(location, color = TextGray, fontSize = 12.sp)
                 }
             }
         }
@@ -213,7 +295,12 @@ fun NextBookingCard() {
 }
 
 @Composable
-fun PreviousBookingItem(booking: PreviousBooking) {
+fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?) {
+    val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
+    val dates = "${booking.startDate} — ${booking.endDate}"
+    val price = "S/ ${String.format("%.2f", booking.totalAmount)}"
+    val imageUrl = vehicle?.primaryImageUrl ?: ""
+    
     Surface(
         color = Color.White.copy(alpha = 0.4f),
         shape = RoundedCornerShape(16.dp),
@@ -223,30 +310,56 @@ fun PreviousBookingItem(booking: PreviousBooking) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = booking.imageUrl,
-                contentDescription = null,
-                modifier = Modifier.size(60.dp, 40.dp).clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop
-            )
+            if (imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.size(60.dp, 40.dp).clip(RoundedCornerShape(4.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(booking.carName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
-                Text("${booking.dates} · ${booking.price}", fontSize = 12.sp, color = Color.DarkGray)
+                Text(carName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+                Text("$dates · $price", fontSize = 12.sp, color = Color.DarkGray)
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.Black)
+            
+            Surface(
+                color = getStatusColor(booking.status).copy(alpha = 0.15f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = getStatusText(booking.status),
+                    color = getStatusColor(booking.status),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
 
-data class PreviousBooking(
-    val carName: String,
-    val dates: String,
-    val price: String,
-    val imageUrl: String
-)
+private fun getStatusText(status: String): String {
+    return when (status) {
+        "PENDING" -> "Pendiente"
+        "CONFIRMED" -> "Confirmada"
+        "ACTIVE" -> "Activa"
+        "COMPLETED" -> "Completada"
+        "CANCELLED" -> "Cancelada"
+        "EXPIRED" -> "Expirada"
+        else -> status
+    }
+}
 
-val previousBookings = listOf(
-    PreviousBooking("Mini Cooper S", "28 abr — 30 abr", "76 €", "https://img.remediosdigitales.com/391157/mini-cooper-s-2021-11/1366_2000.jpg"),
-    PreviousBooking("Volkswagen Golf", "12 abr — 13 abr", "32 €", "https://cdn.pixabay.com/photo/2021/01/21/09/57/car-5936850_1280.jpg")
-)
+private fun getStatusColor(status: String): Color {
+    return when (status) {
+        "PENDING" -> Color(0xFFE6A23C)
+        "CONFIRMED" -> PrimaryCyan
+        "ACTIVE" -> Color(0xFF67C23A)
+        "COMPLETED" -> Color.LightGray
+        "CANCELLED" -> Color(0xFFF56C6C)
+        "EXPIRED" -> Color.Gray
+        else -> Color.LightGray
+    }
+}
