@@ -31,6 +31,8 @@ data class VehicleDto(
     val features: List<String> = emptyList(),
     val primaryImageUrl: String? = null,
     val primaryImagePath: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val createdAt: String,
     val updatedAt: String
 )

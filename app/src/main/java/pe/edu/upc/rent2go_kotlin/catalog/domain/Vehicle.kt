@@ -19,6 +19,8 @@ data class Vehicle(
     val features: List<String>,
     val primaryImageUrl: String?,
     val primaryImagePath: String?,
+    val latitude: Double?,
+    val longitude: Double?,
     val createdAt: String,
     val updatedAt: String
 )

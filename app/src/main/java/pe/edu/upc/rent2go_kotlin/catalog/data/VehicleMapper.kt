@@ -22,6 +22,8 @@ fun VehicleDto.toDomain(): Vehicle {
         features = features,
         primaryImageUrl = primaryImageUrl,
         primaryImagePath = primaryImagePath,
+        latitude = latitude,
+        longitude = longitude,
         createdAt = createdAt,
         updatedAt = updatedAt
     )

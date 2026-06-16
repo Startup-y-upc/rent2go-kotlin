@@ -29,6 +29,12 @@ import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.CardLight
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
 fun ExploreScreen(
@@ -43,6 +49,21 @@ fun ExploreScreen(
     )
 ) {
     val state = viewModel.state.value
+
+    val lima = LatLng(-12.046374, -77.042793)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(lima, 11f)
+    }
+
+    val firstVehicleWithLocation = state.vehicles.firstOrNull { it.latitude != null && it.longitude != null }
+    LaunchedEffect(firstVehicleWithLocation) {
+        if (firstVehicleWithLocation != null) {
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                LatLng(firstVehicleWithLocation.latitude!!, firstVehicleWithLocation.longitude!!),
+                13f
+            )
+        }
+    }
 
     // Recargar cada vez que la pantalla entra en composición (ej: al cambiar de tab)
     LaunchedEffect(Unit) {
@@ -90,8 +111,28 @@ fun ExploreScreen(
             }
         }
 
-        // TODO: Mapa comentado hasta que el backend devuelva latitude/longitude
-        // Ver app/docs/catalog-adaptations.md
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(12.dp))
+        ) {
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState
+            ) {
+                state.vehicles.forEach { vehicle ->
+                    if (vehicle.latitude != null && vehicle.longitude != null) {
+                        Marker(
+                            state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
+                            title = "${vehicle.make} ${vehicle.model}",
+                            snippet = "S/ ${String.format("%.0f", vehicle.dailyPrice)}/día"
+                        )
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
