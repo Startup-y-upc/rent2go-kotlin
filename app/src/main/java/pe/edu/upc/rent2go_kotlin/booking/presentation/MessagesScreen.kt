@@ -30,12 +30,12 @@ fun MessagesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(LightBlueBg)
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 24.dp),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

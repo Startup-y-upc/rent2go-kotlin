@@ -51,15 +51,14 @@ fun ProfileScreen(
         // Header
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(240.dp),
+                .fillMaxWidth(),
             color = DarkBlue,
             shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
+                    .statusBarsPadding()
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
