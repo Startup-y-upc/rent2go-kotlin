@@ -12,6 +12,8 @@ object SessionManager {
     private const val KEY_EMAIL = "user_email"
     private const val KEY_PHONE = "user_phone"
     private const val KEY_ROLE = "user_role"
+    private const val KEY_USERNAME = "user_username"
+    private const val KEY_PROFILE_IMAGE_URL = "user_profile_image_url"
     private const val KEY_REMEMBER_ME = "remember_me"
 
     private var sharedPreferences: SharedPreferences? = null
@@ -19,9 +21,9 @@ object SessionManager {
     fun initialize(context: Context) {
         if (sharedPreferences == null) {
             sharedPreferences = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            if (!getPrefs().getBoolean(KEY_REMEMBER_ME, false)) {
-                clearSession()
-            }
+            // Ya NO limpiamos la sesión al iniciar si remember_me es false.
+            // En móvil, la sesión persiste por defecto hasta que el usuario cierra sesión manualmente.
+            // El flag remember_me puede usarse para sesiones extendidas (ej. refresh tokens en el futuro).
         }
     }
 
@@ -41,6 +43,21 @@ object SessionManager {
             putString(KEY_EMAIL, user.email)
             putString(KEY_PHONE, user.phone)
             putString(KEY_ROLE, user.role)
+            user.username?.let { putString(KEY_USERNAME, it) }
+            user.profileImageUrl?.let { putString(KEY_PROFILE_IMAGE_URL, it) }
+            apply()
+        }
+    }
+
+    fun updateUser(user: User) {
+        getPrefs().edit().apply {
+            putInt(KEY_USER_ID, user.id)
+            putString(KEY_FULL_NAME, user.fullName)
+            putString(KEY_EMAIL, user.email)
+            putString(KEY_PHONE, user.phone)
+            putString(KEY_ROLE, user.role)
+            user.username?.let { putString(KEY_USERNAME, it) }
+            user.profileImageUrl?.let { putString(KEY_PROFILE_IMAGE_URL, it) }
             apply()
         }
     }
@@ -62,7 +79,9 @@ object SessionManager {
             fullName = getPrefs().getString(KEY_FULL_NAME, "") ?: "",
             email = getPrefs().getString(KEY_EMAIL, "") ?: "",
             phone = getPrefs().getString(KEY_PHONE, "") ?: "",
-            role = getPrefs().getString(KEY_ROLE, "") ?: ""
+            role = getPrefs().getString(KEY_ROLE, "") ?: "",
+            username = getPrefs().getString(KEY_USERNAME, null),
+            profileImageUrl = getPrefs().getString(KEY_PROFILE_IMAGE_URL, null)
         )
     }
 

@@ -22,7 +22,10 @@ import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingConfirmationScreen
 fun SetupNavGraph(navController: NavHostController) {
     val authViewModel: AuthViewModel = viewModel()
 
-    val startDestination = if (authViewModel.currentUser != null) "car_list" else "login"
+    // Verificar si hay token guardado (sincrónico) para decidir la ruta inicial.
+    // El AuthViewModel.init() llamará a /api/v1/auth/me para hidratar los datos frescos.
+    val hasSession = pe.edu.upc.rent2go_kotlin.common.SessionManager.isUserLoggedIn()
+    val startDestination = if (authViewModel.currentUser != null || hasSession) "car_list" else "login"
 
     NavHost(
         navController = navController,

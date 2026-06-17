@@ -75,16 +75,16 @@ fun AccountTypeScreen(
             onClick = { viewModel.selectedAccountType = "RENTER" }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        AccountTypeCard(
-            title = "Quiero rentar mi auto",
-            description = "Convierte tu coche parado en ingresos. Tú decides precio y disponibilidad.",
-            items = listOf("Publicar tu vehículo", "Gestionar reservas", "Cobrar mensualmente"),
-            icon = Icons.Default.Person,
-            isSelected = viewModel.selectedAccountType == "OWNER",
-            onClick = { viewModel.selectedAccountType = "OWNER" }
-        )
+        // Spacer(modifier = Modifier.height(16.dp))
+        //
+        // AccountTypeCard(
+        //     title = "Quiero rentar mi auto",
+        //     description = "Convierte tu coche parado en ingresos. Tú decides precio y disponibilidad.",
+        //     items = listOf("Publicar tu vehículo", "Gestionar reservas", "Cobrar mensualmente"),
+        //     icon = Icons.Default.Person,
+        //     isSelected = viewModel.selectedAccountType == "OWNER",
+        //     onClick = { viewModel.selectedAccountType = "OWNER" }
+        // )
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -115,7 +115,7 @@ fun AccountTypeScreen(
                 CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
             } else {
                 Text(
-                    text = "Continuar como ${if (viewModel.selectedAccountType == "RENTER") "arrendatario" else "propietario"}",
+                    text = "Continuar como arrendatario",
                     color = Color.Black,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp

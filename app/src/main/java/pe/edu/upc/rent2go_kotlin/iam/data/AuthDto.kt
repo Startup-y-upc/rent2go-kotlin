@@ -51,6 +51,24 @@ data class RegisterResponse(
     @SerialName("phone_verified") val phoneVerified: Boolean,
     @SerialName("two_factor_enabled") val twoFactorEnabled: Boolean,
     @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    val token: String? = null // token may be returned on register
+)
+
+@Serializable
+data class MeResponse(
+    val id: Int,
+    val email: String,
+    val username: String? = null,
+    @SerialName("full_name") val fullName: String,
+    val phone: String,
+    @SerialName("profile_image_url") val profileImageUrl: String? = null,
+    @SerialName("account_type") val accountType: String,
+    val status: String,
+    @SerialName("email_verified") val emailVerified: Boolean,
+    @SerialName("phone_verified") val phoneVerified: Boolean,
+    @SerialName("two_factor_enabled") val twoFactorEnabled: Boolean,
+    @SerialName("created_at") val createdAt: String,
     @SerialName("updated_at") val updatedAt: String
 )
 

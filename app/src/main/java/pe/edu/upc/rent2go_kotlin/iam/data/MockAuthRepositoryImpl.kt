@@ -10,6 +10,11 @@ class MockAuthRepositoryImpl : AuthRepository {
         return User(1, "Usuario de Prueba", email, "999888777", "RENTER")
     }
 
+    override suspend fun getMe(): User {
+        delay(500) // Simulate network delay
+        return User(1, "Usuario de Prueba", "usuario@example.com", "999888777", "RENTER")
+    }
+
     override suspend fun register(
         username: String,
         fullName: String,

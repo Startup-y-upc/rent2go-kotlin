@@ -40,9 +40,23 @@ class AuthViewModel(
     var isKycSuccess by mutableStateOf(false)
 
     init {
-        currentUser = pe.edu.upc.rent2go_kotlin.common.SessionManager.getUser()
-        if (currentUser != null) {
-            isAuthSuccess = true
+        // Si hay un token guardado, obtener los datos frescos del usuario desde /api/v1/auth/me
+        if (pe.edu.upc.rent2go_kotlin.common.SessionManager.getToken() != null) {
+            viewModelScope.launch {
+                try {
+                    val user = repository.getMe()
+                    currentUser = user
+                    isAuthSuccess = true
+                } catch (e: Exception) {
+                    // Si falla (token expirado, sin conexión), usar datos locales como fallback
+                    currentUser = pe.edu.upc.rent2go_kotlin.common.SessionManager.getUser()
+                    if (currentUser != null) {
+                        isAuthSuccess = true
+                    } else {
+                        pe.edu.upc.rent2go_kotlin.common.SessionManager.clearSession()
+                    }
+                }
+            }
         }
     }
 

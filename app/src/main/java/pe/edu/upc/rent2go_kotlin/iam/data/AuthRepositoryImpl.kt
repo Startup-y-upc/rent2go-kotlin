@@ -17,7 +17,9 @@ class AuthRepositoryImpl(
                     fullName = body.fullName,
                     email = body.email,
                     phone = body.phone,
-                    role = body.accountType
+                    role = body.accountType,
+                    username = body.username,
+                    profileImageUrl = body.profileImageUrl
                 )
                 pe.edu.upc.rent2go_kotlin.common.SessionManager.saveSession(body.token, user)
                 return user
@@ -27,6 +29,32 @@ class AuthRepositoryImpl(
             }
         } catch (e: Exception) {
             throw Exception(e.message ?: "Error desconocido al iniciar sesión")
+        }
+    }
+
+    override suspend fun getMe(): User {
+        try {
+            val response = api.getMe()
+            if (response.isSuccessful) {
+                val body = response.body() ?: throw Exception("Respuesta del servidor vacía")
+                val user = User(
+                    id = body.id,
+                    fullName = body.fullName,
+                    email = body.email,
+                    phone = body.phone,
+                    role = body.accountType,
+                    username = body.username,
+                    profileImageUrl = body.profileImageUrl
+                )
+                // Actualizar los datos en SessionManager (el token ya está guardado)
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(user)
+                return user
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Sesión expirada"
+                throw Exception(errorMsg)
+            }
+        } catch (e: Exception) {
+            throw Exception(e.message ?: "Error al obtener los datos del usuario")
         }
     }
 
@@ -51,13 +79,20 @@ class AuthRepositoryImpl(
             val response = api.register(request)
             if (response.isSuccessful) {
                 val body = response.body() ?: throw Exception("Respuesta del servidor vacía")
-                return User(
+                val user = User(
                     id = body.id,
                     fullName = body.fullName,
                     email = body.email,
                     phone = body.phone,
-                    role = body.accountType
+                    role = body.accountType,
+                    username = body.username,
+                    profileImageUrl = body.profileImageUrl
                 )
+                // Si el backend devuelve un token en el registro, guardar la sesión
+                if (!body.token.isNullOrBlank()) {
+                    pe.edu.upc.rent2go_kotlin.common.SessionManager.saveSession(body.token, user)
+                }
+                return user
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error al registrar el usuario"
                 throw Exception(errorMsg)

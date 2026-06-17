@@ -2,6 +2,7 @@ package pe.edu.upc.rent2go_kotlin.iam.domain
 
 interface AuthRepository {
     suspend fun login(email: String, password: String): User
+    suspend fun getMe(): User
     suspend fun register(
         username: String,
         fullName: String,

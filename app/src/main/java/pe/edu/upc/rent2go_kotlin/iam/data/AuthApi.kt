@@ -2,6 +2,7 @@ package pe.edu.upc.rent2go_kotlin.iam.data
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface AuthApi {
@@ -10,6 +11,9 @@ interface AuthApi {
 
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
+
+    @GET("api/v1/auth/me")
+    suspend fun getMe(): Response<MeResponse>
 
     @POST("api/v1/auth/kyc")
     suspend fun submitKyc(@Body request: SubmitKycRequest): Response<Unit>
