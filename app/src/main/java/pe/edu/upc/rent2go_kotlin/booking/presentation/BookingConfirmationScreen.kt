@@ -292,6 +292,7 @@ fun BookingConfirmationScreen(
             if (showSuccessDialog) {
                 AlertDialog(
                     onDismissRequest = { },
+                    containerColor = Color.White,
                     title = { Text("¡Reserva Confirmada!", fontWeight = FontWeight.Bold, color = Color.Black) },
                     text = {
                         Text(

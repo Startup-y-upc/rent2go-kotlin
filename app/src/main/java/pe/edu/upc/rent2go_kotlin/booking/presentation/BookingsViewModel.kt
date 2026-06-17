@@ -63,6 +63,25 @@ class BookingsViewModel(
             }
         }
     }
+
+    fun cancelBooking(bookingId: Int, onSuccess: () -> Unit) {
+        val renterId = SessionManager.getUserId()
+        if (renterId == -1) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, error = "")
+            try {
+                bookingRepository.cancelBooking(bookingId, renterId, "Cancelado por el cliente")
+                loadBookings()
+                onSuccess()
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Error al cancelar la reserva"
+                )
+            }
+        }
+    }
 }
 
 data class BookingsState(

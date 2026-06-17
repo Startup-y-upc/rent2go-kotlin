@@ -46,9 +46,46 @@ fun BookingsScreen(
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Próximas", "Activas", "Pasadas")
     val state = viewModel.state.value
+    var bookingToCancel by remember { mutableStateOf<Booking?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadBookings()
+    }
+
+    if (bookingToCancel != null) {
+        AlertDialog(
+            onDismissRequest = { bookingToCancel = null },
+            containerColor = Color.White,
+            title = { Text("¿Cancelar reserva?", fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = {
+                Text(
+                    text = "¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer.",
+                    color = Color.DarkGray
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val booking = bookingToCancel!!
+                        viewModel.cancelBooking(booking.id) {
+                            // Canceled successfully
+                        }
+                        bookingToCancel = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF56C6C))
+                ) {
+                    Text("Sí, cancelar", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { bookingToCancel = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Black)
+                ) {
+                    Text("Atrás")
+                }
+            }
+        )
     }
 
     val filteredBookings = remember(state.bookings, selectedTab) {
@@ -178,7 +215,7 @@ fun BookingsScreen(
                     val nextBooking = filteredBookings.first()
                     val vehicle = state.vehicles[nextBooking.vehicleId]
                     item {
-                        NextBookingCard(nextBooking, vehicle)
+                        NextBookingCard(nextBooking, vehicle, onCancelClick = { bookingToCancel = nextBooking })
                     }
                     
                     if (filteredBookings.size > 1) {
@@ -193,7 +230,7 @@ fun BookingsScreen(
                         }
                         items(filteredBookings.drop(1)) { booking ->
                             val v = state.vehicles[booking.vehicleId]
-                            PreviousBookingItem(booking, v)
+                            PreviousBookingItem(booking, v, onCancelClick = { bookingToCancel = booking })
                         }
                     }
                 } else {
@@ -208,7 +245,7 @@ fun BookingsScreen(
 }
 
 @Composable
-fun NextBookingCard(booking: Booking, vehicle: Vehicle?) {
+fun NextBookingCard(booking: Booking, vehicle: Vehicle?, onCancelClick: () -> Unit) {
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
     val yearAndCategory = if (vehicle != null) "${vehicle.categoryName} · ${vehicle.year}" else ""
     val imageUrl = vehicle?.primaryImageUrl ?: ""
@@ -289,13 +326,23 @@ fun NextBookingCard(booking: Booking, vehicle: Vehicle?) {
                     Text("Código: ${booking.reservationCode}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text(location, color = TextGray, fontSize = 12.sp)
                 }
+                if (booking.status == "PENDING" || booking.status == "CONFIRMED") {
+                    Button(
+                        onClick = onCancelClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF56C6C)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(40.dp).padding(start = 8.dp)
+                    ) {
+                        Text("Cancelar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?) {
+fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?, onCancelClick: (() -> Unit)? = null) {
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
     val dates = "${booking.startDate} — ${booking.endDate}"
     val price = "S/ ${String.format("%.2f", booking.totalAmount)}"
@@ -335,6 +382,17 @@ fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?) {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
+            }
+
+            if ((booking.status == "PENDING" || booking.status == "CONFIRMED") && onCancelClick != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(
+                    onClick = onCancelClick,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFF56C6C))
+                ) {
+                    Text("Cancelar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

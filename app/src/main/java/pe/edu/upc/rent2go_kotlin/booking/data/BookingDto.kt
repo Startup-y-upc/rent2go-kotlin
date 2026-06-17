@@ -69,3 +69,10 @@ fun BookingDto.toDomain(): Booking {
         damageReport = damageReport
     )
 }
+
+@Serializable
+data class CancelBookingRequest(
+    val requestedById: Int,
+    val reason: String
+)
+

@@ -13,4 +13,10 @@ interface BookingApi {
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20
     ): BookingResponse
+
+    @POST("api/v1/reservations/{id}/cancel")
+    suspend fun cancelReservation(
+        @Path("id") id: Int,
+        @Body request: CancelBookingRequest
+    ): BookingDto
 }
