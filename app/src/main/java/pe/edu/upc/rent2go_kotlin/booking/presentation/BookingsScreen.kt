@@ -175,7 +175,7 @@ fun BookingsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 140.dp)
         ) {
             if (state.isLoading) {
                 item {

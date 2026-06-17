@@ -74,7 +74,7 @@ fun MessagesScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 140.dp)
         ) {
             items(mockChats) { chat ->
                 MessageItem(chat = chat, onClick = { onChatClick(chat.userName) })

@@ -166,7 +166,7 @@ fun ExploreScreen(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(bottom = 140.dp)
             ) {
                 items(state.vehicles) { vehicle ->
                     VehicleCard(
