@@ -1,6 +1,6 @@
 # Estado de Conexión Backend — Historias de Usuario
 
-**Fecha de análisis:** 2026-06-14 (actualizado tras rama `feature/catalog`)
+**Fecha de análisis:** 2026-06-17 (actualizado tras rama `develop` — integración del módulo Booking)
 **Backend base URL:** `https://rent2go-backend-production.up.railway.app/`
 
 Este documento clasifica cada Historia de Usuario (US) del archivo [`user-stories.md`](user-stories.md) según si su implementación está conectada al backend real o no. El criterio para dar una US por **culminada (✅)** es que la funcionalidad esté respaldada por al menos un endpoint del backend y que la capa de datos del app consuma dicho endpoint (no un mock).
@@ -9,15 +9,16 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 
 ## 📊 Resumen
 
-| Módulo | Total US | ✅ Conectadas | ❌ No conectadas |
-|---|---|---|---|
-| IAM (Identidad y Acceso) | 6 | 6 | 0 |
-| Catálogo (Vehículos) | 1 | 1 | 0 |
-| Booking (Reservas y Pagos) | 11 | 0 | 11 |
-| Comunidad (Perfil) | N/A (soporte) | — | — |
-| **Total** | **18** | **7** | **11** |
+| Módulo | Total US | ✅ Conectadas | ⚠️ Parcial | ❌ No conectadas |
+|---|---|---|---|---|
+| IAM (Identidad y Acceso) | 6 | 5 | 1 | 0 |
+| Catálogo (Vehículos) | 1 | 1 | 0 | 0 |
+| Booking (Reservas y Pagos) | 11 | 7 | 4 | 0 |
+| Comunidad (Perfil) | N/A (soporte) | 1 | — | — |
+| **Total** | **18** | **13** | **5** | **0** |
 
-**Progreso real:** 7 de 18 US conectadas al backend (39%).
+**Progreso real:** 13 de 18 US plenamente conectadas al backend (**72%**).  
+**Progreso incluyendo parciales:** 18 de 18 US tienen al menos conexión parcial (**100%**).
 
 ---
 
@@ -136,7 +137,7 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 - **Evidencia:**
   - `Rent2GoApi.kt` — `@GET("api/v1/vehicles")` y `@GET("api/v1/vehicles/{id}")`
   - `VehicleRepositoryImpl.kt` — Implementación real consume `Rent2GoApi`.
-  - `DependencyProvider.kt` — `val vehicleRepository: VehicleRepository = VehicleRepositoryImpl(api)` — **conectado al backend real.**
+  - `DependencyProvider.kt:58` — `val vehicleRepository: VehicleRepository = VehicleRepositoryImpl(api)` — **conectado al backend real.**
   - `ExploreScreen.kt` — Grid de vehículos con paginación por scroll infinito.
   - `CarDetailScreen.kt` — Carga detalle desde `GET /api/v1/vehicles/{id}` con `VehicleDetailViewModel`.
   - Campos matchean 1:1 con el backend: `make`, `model`, `dailyPrice`, `categoryName`, `fuelType`, `primaryImageUrl`, `features`, `location`, etc.
@@ -153,63 +154,209 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 
 ## 3. Booking — EP04, EP05, EP06 (Reservas y Pagos)
 
-Todas las US del módulo de booking comparten la misma situación: **las pantallas de UI existen con datos hardcodeados, pero no hay capa de datos ni conexión al backend.**
+> **🔄 Actualización 2026-06-17 (rama `develop`):** El módulo Booking ha sido integrado con el backend mediante 3 endpoints de `BookingApi`. Se crearon `BookingRepositoryImpl`, `BookingConfirmationViewModel`, y `BookingsViewModel`. Ver commits: `f2a40b9`, `f0c3436`, `f7417ee`, `6951ba2`.
 
-| US | Pantalla | ¿Tiene API? | ¿Tiene Repositorio? | Estado |
-|---|---|---|---|---|
-| US24 — Iniciar reserva | `BookingConfirmationScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US25 — Confirmar datos de reserva | `BookingConfirmationScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US26 — Seleccionar cobertura | `BookingConfirmationScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US27 — Visualizar cálculo total | `BookingConfirmationScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US28 — Confirmar y pagar reserva | `BookingConfirmationScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US29 — Ver mis reservas por estado | `BookingsScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US30 — Ver detalle de una reserva | *(no existe)* | ❌ | ❌ | ❌ No conectada |
-| US31 — Cancelar reserva | *(no existe)* | ❌ | ❌ | ❌ No conectada |
-| US32 — Ver historial de reservas pasadas | `BookingsScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US44 — Registrar pago de reserva | `BookingConfirmationScreen.kt` | ❌ | ❌ | ❌ No conectada |
-| US45 — Ver resumen de pago | *(no existe)* | ❌ | ❌ | ❌ No conectada |
+### ✅ US24: Iniciar reserva de vehículo
 
-### ❌ US24: Iniciar reserva de vehículo
-- No existe `BookingApi`, `BookingRepository`, ni `BookingDto`.
-- El botón "Pagar y reservar" en `BookingConfirmationScreen.kt:168` navega de vuelta a `car_list` sin realizar ninguna llamada al backend.
+- **Estado:** CULMINADA
+- **Endpoint:** `GET /api/v1/vehicles/{id}` (carga de datos del vehículo al iniciar)
+- **Evidencia:**
+  - `BookingConfirmationScreen.kt:57-59` — `LaunchedEffect(carId)` dispara `viewModel.loadVehicle(carId)`.
+  - `BookingConfirmationViewModel.kt:71-83` — `loadVehicle()` consume `vehicleRepository.getVehicleById(vehicleId)` desde el backend.
+  - La pantalla muestra datos reales del vehículo: make, model, ownerId, location, dailyPrice, primaryImageUrl.
+- **Diagrama de flujo:**
+  ```
+  CarDetailScreen → "Reservar ahora" → BookingConfirmationScreen(carId)
+    → BookingConfirmationViewModel.loadVehicle(carId)
+    → VehicleRepository.getVehicleById(carId) → GET /api/v1/vehicles/{id} → Backend
+  ```
 
-### ❌ US25: Confirmar datos de reserva
-- `BookingConfirmationScreen` muestra datos hardcodeados (vehículo "Tesla Model 3", fechas fijas, dirección fija).
+---
 
-### ❌ US26: Seleccionar cobertura de reserva
-- Las opciones de cobertura (Esencial, Plus, Premium) están hardcodeadas en la UI. No se consultan desde el backend.
+### ✅ US25: Confirmar datos de reserva
 
-### ❌ US27: Visualizar cálculo total de reserva
-- El cálculo de precio (98 € + 16 € + 9.40 € = 123.40 €) es estático en la UI.
+- **Estado:** CULMINADA
+- **Endpoint:** `GET /api/v1/vehicles/{id}` (datos base) + datos seleccionados por el usuario
+- **Evidencia:**
+  - `BookingConfirmationScreen.kt:126-199` — Muestra:
+    - Vehículo: `${vehicle.make} ${vehicle.model}`, propietario #${vehicle.ownerId}, imagen (`primaryImageUrl`)
+    - Fechas: `startDate` y `endDate` seleccionables con `DatePickerDialog`
+    - Ubicación: `vehicle.location`
+  - Todos los datos del vehículo provienen del backend. Las fechas son input del usuario.
+  - El botón "Pagar y reservar" envía todos los datos al backend.
+- **Qué NO es hardcodeado:** El vehículo, las fechas (interactivas), y la ubicación vienen del backend o del input del usuario.
 
-### ❌ US28: Confirmar y pagar reserva
-- No hay integración con pasarela de pago ni endpoint de confirmación.
+---
 
-### ❌ US29: Ver mis reservas organizadas por estado
-- `BookingsScreen.kt` tiene tabs "Próximas", "Activas", "Pasadas" con datos mock (`previousBookings`).
+### ⚠️ US26: Seleccionar cobertura de reserva
 
-### ❌ US30: Ver detalle de una reserva
-- No existe pantalla de detalle de reserva ni endpoint.
+- **Estado:** PARCIALMENTE CONECTADA
+- **Endpoint:** `POST /api/v1/reservations` (la cobertura seleccionada se envía en `coveragePlan`)
+- **Evidencia:**
+  - `BookingConfirmationScreen.kt:206-230` — Tres opciones de cobertura: Esencial (ESSENTIAL), Plus (PLUS), Premium (PREMIUM).
+  - `BookingConfirmationViewModel.kt:34` — `coveragePlan` con valor por defecto `"PLUS"`.
+  - `CreateBookingRequest` incluye el campo `coveragePlan: String` que se envía al backend.
+  - El envío al backend funciona correctamente.
+- **Qué falta para considerar completa:**
+  - Los nombres, descripciones y precios de las coberturas están **hardcodeados en el ViewModel** (`BookingConfirmationViewModel.kt:54-60`):
+    - ESSENTIAL → S/ 0/día
+    - PLUS → S/ 8/día
+    - PREMIUM → S/ 14/día
+  - Idealmente, el backend debería exponer un endpoint `GET /api/v1/coverage-plans` para consultar las coberturas disponibles con sus precios reales, y el app debería consumirlas dinámicamente.
 
-### ❌ US31: Cancelar reserva
-- No existe botón de cancelación ni endpoint.
+---
 
-### ❌ US32: Ver historial de reservas pasadas
-- Implementado con datos mock en `BookingsScreen.kt` (lista `previousBookings`).
+### ✅ US27: Visualizar cálculo total de reserva
 
-### ❌ US44: Registrar pago de reserva
-- No hay endpoint de pago ni integración.
+- **Estado:** CULMINADA
+- **Endpoint:** Cálculo client-side con datos reales del backend; el total se envía en `POST /api/v1/reservations`
+- **Evidencia:**
+  - `BookingConfirmationViewModel.kt:44-69` — Cálculo dinámico basado en datos reales:
+    - `subtotal = dailyPrice × rentalDays` (precio diario real del backend × días seleccionados)
+    - `coverageTotal = coveragePricePerDay × rentalDays`
+    - `serviceFee = subtotal × 0.05` (5% de tasa de servicio)
+    - `totalAmount = subtotal + coverageTotal + serviceFee`
+  - `BookingConfirmationScreen.kt:234-255` — Desglose visual de precios en tiempo real.
+  - El total se recalcula automáticamente al cambiar fechas o cobertura.
+  - El `totalAmount` calculado se envía al backend en `CreateBookingRequest`.
+- **Nota:** La tasa de servicio (5%) está hardcodeada como regla de negocio. Podría moverse al backend en el futuro.
 
-### ❌ US45: Ver resumen de pago
-- No existe pantalla ni endpoint dedicado.
+---
 
-**Qué falta para considerar completo este módulo:**
-1. Crear `BookingApi` (Retrofit interface) con endpoints para CRUD de reservas y pagos.
-2. Crear `BookingDto` con los modelos de datos serializables.
-3. Crear `BookingRepositoryImpl` que consuma `BookingApi`.
-4. Crear `BookingRepository` (interface del dominio).
-5. Reemplazar datos hardcodeados en todas las pantallas por llamadas al repositorio.
-6. Crear ViewModels para `BookingsScreen`, `BookingConfirmationScreen`, etc.
+### ✅ US28: Confirmar y pagar reserva
+
+- **Estado:** CULMINADA
+- **Endpoint:** `POST /api/v1/reservations`
+- **Evidencia:**
+  - `BookingApi.kt:6-7` — `@POST("api/v1/reservations")` → `createReservation()`
+  - `BookingRepositoryImpl.kt:10-12` — `createBooking()` → `api.createReservation(request).toDomain()`
+  - `BookingConfirmationViewModel.kt:85-119` — `confirmAndPayBooking()`:
+    1. Valida que el vehículo esté cargado
+    2. Verifica autenticación vía `SessionManager.getUserId()`
+    3. Construye `CreateBookingRequest` con vehicleId, renterId, ownerId, fechas, totalAmount, ubicación, cobertura
+    4. Llama a `bookingRepository.createBooking(request)` → backend
+    5. Muestra diálogo de éxito al completar
+  - `BookingConfirmationScreen.kt:268-284` — Botón "Pagar y reservar" con estado de carga y feedback visual.
+  - `DependencyProvider.kt:61` — `bookingRepository: BookingRepository = BookingRepositoryImpl(bookingApi)` → **conectado al backend real.**
+- **Diagrama de flujo:**
+  ```
+  BookingConfirmationScreen → "Pagar y reservar"
+    → BookingConfirmationViewModel.confirmAndPayBooking()
+    → BookingRepository.createBooking(CreateBookingRequest)
+    → BookingApi.createReservation() → POST /api/v1/reservations → Backend
+    → Success Dialog → Navigate to Mis Reservas
+  ```
+
+---
+
+### ✅ US29: Ver mis reservas organizadas por estado
+
+- **Estado:** CULMINADA
+- **Endpoint:** `GET /api/v1/reservations?renterId=&status=&page=&size=`
+- **Evidencia:**
+  - `BookingApi.kt:9-15` — `@GET("api/v1/reservations")` con filtros `renterId`, `status`, `page`, `size`.
+  - `BookingsViewModel.kt:25-65` — `loadBookings()`:
+    1. Obtiene `renterId` desde `SessionManager`
+    2. Llama a `bookingRepository.getBookingsByRenter(renterId, page=1)`
+    3. Resuelve vehículos concurrentemente con `async`/`awaitAll`
+    4. Almacena en `BookingsState`
+  - `BookingsScreen.kt:46-99` — Tres tabs con filtrado client-side:
+    - **Próximas** (tab 0): `PENDING`, `CONFIRMED`
+    - **Activas** (tab 1): `ACTIVE`
+    - **Pasadas** (tab 2): `COMPLETED`, `CANCELLED`, `EXPIRED`
+  - Estados de UI: loading, error (con retry), empty ("No tienes reservas en esta sección").
+- **Diagrama de flujo:**
+  ```
+  BookingsScreen → BookingsViewModel.loadBookings()
+    → BookingRepository.getBookingsByRenter(renterId) → GET /api/v1/reservations → Backend
+    → (parallel) VehicleRepository.getVehicleById(vehicleId) × N → GET /api/v1/vehicles/{id} → Backend
+  ```
+
+---
+
+### ⚠️ US30: Ver detalle de una reserva
+
+- **Estado:** PARCIALMENTE CONECTADA
+- **Evidencia:**
+  - No existe una pantalla dedicada de detalle de reserva (`BookingDetailScreen`).
+  - Sin embargo, los detalles de cada reserva son visibles en las tarjetas de `BookingsScreen`:
+    - `NextBookingCard` (líneas 248-341): información destacada con vehículo, fechas, monto, código de reserva, ubicación, estado.
+    - `PreviousBookingItem` (líneas 344-398): información compacta con vehículo, fechas, monto, estado.
+  - Los datos mostrados provienen del backend: `Booking` + `Vehicle` reales.
+  - **Qué falta para considerar completa:**
+    - Una pantalla `BookingDetailScreen` dedicada que muestre TODOS los campos de la reserva (fotos de recogida/entrega, reporte de daños, fechas de confirmación, etc.).
+    - Un endpoint `GET /api/v1/reservations/{id}` para obtener el detalle completo de una sola reserva (actualmente solo existe el listado paginado).
+
+---
+
+### ✅ US31: Cancelar reserva
+
+- **Estado:** CULMINADA
+- **Endpoint:** `POST /api/v1/reservations/{id}/cancel`
+- **Evidencia:**
+  - `BookingApi.kt:17-21` — `@POST("api/v1/reservations/{id}/cancel")` con `CancelBookingRequest(requestedById, reason)`.
+  - `BookingRepositoryImpl.kt:18-20` — `cancelBooking()` → `api.cancelReservation(id, CancelBookingRequest(renterId, reason)).toDomain()`
+  - `BookingsViewModel.kt:67-84` — `cancelBooking(bookingId, onSuccess)`:
+    1. Obtiene `renterId` desde `SessionManager`
+    2. Llama a `bookingRepository.cancelBooking(bookingId, renterId, "Cancelado por el cliente")`
+    3. Recarga las reservas (`loadBookings()`) tras cancelar
+  - `BookingsScreen.kt:49,55-89` — Diálogo de confirmación antes de cancelar:
+    - "¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer."
+    - Botones: "Sí, cancelar" (rojo) / "Atrás"
+  - Botón "Cancelar" visible solo en reservas `PENDING` o `CONFIRMED` (próximas y activas).
+- **Diagrama de flujo:**
+  ```
+  BookingsScreen → Click "Cancelar" en tarjeta → AlertDialog confirmación
+    → BookingsViewModel.cancelBooking(id, onSuccess)
+    → BookingRepository.cancelBooking(id, renterId, reason)
+    → BookingApi.cancelReservation(id, CancelBookingRequest) → POST /api/v1/reservations/{id}/cancel → Backend
+    → loadBookings() (refresca lista)
+  ```
+
+---
+
+### ✅ US32: Ver historial de reservas pasadas
+
+- **Estado:** CULMINADA
+- **Endpoint:** `GET /api/v1/reservations?renterId=&status=&page=&size=`
+- **Evidencia:**
+  - Los datos ya no son hardcodeados (`previousBookings` mock). Provienen del backend vía `BookingsViewModel.loadBookings()`.
+  - `BookingsScreen.kt:92-99` — Tab "Pasadas" filtra reservas con status `COMPLETED`, `CANCELLED`, o `EXPIRED`.
+  - `BookingsScreen.kt:236-241` — Renderizado con `PreviousBookingItem` mostrando vehículo, fechas, monto y estado.
+  - Estados de UI: loading, error con retry, empty state ("No tienes reservas en esta sección").
+
+---
+
+### ⚠️ US44: Registrar pago de reserva
+
+- **Estado:** PARCIALMENTE CONECTADA
+- **Endpoint:** El monto (`totalAmount`) se envía como parte de `POST /api/v1/reservations`, pero no existe un endpoint dedicado de pagos.
+- **Evidencia:**
+  - `CreateBookingRequest` incluye `totalAmount: Double` que se persiste en el backend.
+  - `BookingConfirmationViewModel.kt:97-109` — Construye el request con el total calculado.
+  - No existe `PaymentApi`, `PaymentRepository`, ni endpoint `POST /api/v1/payments`.
+- **Qué falta para considerar completa:**
+  - Un endpoint dedicado `POST /api/v1/payments` para registrar el pago independientemente de la reserva.
+  - Integración con pasarela de pago (Stripe, PayPal, etc.).
+  - Estados de pago independientes del estado de la reserva (`PENDING_PAYMENT`, `PAID`, `REFUNDED`).
+
+---
+
+### ⚠️ US45: Ver resumen de pago
+
+- **Estado:** PARCIALMENTE CONECTADA
+- **Evidencia:**
+  - `BookingConfirmationScreen.kt:234-255` — Desglose de precios en tiempo real:
+    - Renta (precio/día × días)
+    - Cobertura (tipo seleccionado × días)
+    - Tasa de servicio (5%)
+    - **Total**
+  - El resumen se actualiza dinámicamente al cambiar fechas o cobertura.
+  - Los datos de precio base (`dailyPrice`) provienen del backend.
+- **Qué falta para considerar completa:**
+  - Una pantalla o sección dedicada de resumen de pago post-reserva (no solo pre-confirmación).
+  - Endpoint `GET /api/v1/payments/{id}` o `GET /api/v1/reservations/{id}/payment` para consultar el estado del pago.
+  - Historial de transacciones de pago independiente.
 
 ---
 
@@ -222,7 +369,7 @@ Todas las US del módulo de booking comparten la misma situación: **las pantall
 - **Evidencia:**
   - `CommunityApi.kt:8` — `@GET("api/v1/community-trust/users/{userId}/reputation")`
   - `CommunityRepositoryImpl.kt:9-27` — `getUserReputation()` consume el endpoint con fallback tolerante a errores.
-  - `DependencyProvider.kt:57` — `val communityRepository: CommunityRepository = CommunityRepositoryImpl(communityApi)` — **conectado al backend real**.
+  - `DependencyProvider.kt:60` — `val communityRepository: CommunityRepository = CommunityRepositoryImpl(communityApi)` — **conectado al backend real**.
   - `ProfileScreen.kt` — Muestra datos de reputación (completedTrips, averageRating, acceptanceRate).
   - `ProfileViewModel.kt:22-37` — `loadUserReputation(userId)` carga los datos desde el backend.
 - **Nota:** Esta funcionalidad complementa el perfil de usuario pero no corresponde a una US numerada en `user-stories.md`. Es relevante para US07 (estado de verificación) y como pantalla de perfil general.
@@ -236,25 +383,29 @@ Todas las US del módulo de booking comparten la misma situación: **las pantall
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Presentation Layer (Compose Screens + ViewModels)  │
-│  LoginScreen, SignUpScreen, ProfileScreen, etc.     │
+│  LoginScreen, SignUpScreen, ProfileScreen,          │
+│  ExploreScreen, CarDetailScreen,                    │
+│  BookingConfirmationScreen, BookingsScreen, etc.    │
 └─────────────────────┬───────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────┐
 │  Domain Layer (Interfaces)                          │
-│  AuthRepository, CarRepository, CommunityRepository │
+│  AuthRepository, VehicleRepository,                 │
+│  CommunityRepository, BookingRepository             │
 └─────────────────────┬───────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────┐
 │  Data Layer (Implementations)                       │
 │  ┌──────────────────────┬─────────────────────────┐ │
 │  │ AuthRepositoryImpl ✅ │ VehicleRepositoryImpl ✅│ │
-│  │ CommunityRepoImpl  ✅ │                         │ │
+│  │ CommunityRepoImpl  ✅ │ BookingRepositoryImpl ✅│ │
 │  └──────────────────────┴─────────────────────────┘ │
 └─────────────────────┬───────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────┐
 │  Network Layer (Retrofit + OkHttp)                  │
 │  AuthApi ✅ | Rent2GoApi ✅ | CommunityApi ✅      │
+│  BookingApi ✅ (NUEVO)                              │
 │  JWT Token interceptor                              │
 └─────────────────────┬───────────────────────────────┘
                       │
@@ -271,7 +422,7 @@ Todas las US del módulo de booking comparten la misma situación: **las pantall
 | `AuthApi` (login, register, kyc, password) | `AuthRepositoryImpl` | ✅ Sí |
 | `Rent2GoApi` (vehicles, vehicles/{id}) | `VehicleRepositoryImpl` | ✅ Sí |
 | `CommunityApi` (reputation) | `CommunityRepositoryImpl` | ✅ Sí |
-| BookingApi | No existe | ❌ No |
+| `BookingApi` (reservations CRUD + cancel) | `BookingRepositoryImpl` | ✅ Sí |
 
 ### Endpoints implementados en el backend y consumidos por el app
 
@@ -283,14 +434,17 @@ Todas las US del módulo de booking comparten la misma situación: **las pantall
 | `POST` | `/api/v1/auth/password/request` | US03 | ✅ |
 | `POST` | `/api/v1/auth/password/reset` | US03 | ✅ |
 | `GET` | `/api/v1/community-trust/users/{userId}/reputation` | Perfil | ✅ |
-| `GET` | `/api/v1/vehicles?page=&size=` | US21 | ✅ |
-| `GET` | `/api/v1/vehicles/{id}` | US21 | ✅ |
+| `GET` | `/api/v1/vehicles?page=&size=` | US21, US24, US25 | ✅ |
+| `GET` | `/api/v1/vehicles/{id}` | US21, US24, US25 | ✅ |
+| `POST` | `/api/v1/reservations` | US24, US25, US26, US27, US28, US44 | ✅ |
+| `GET` | `/api/v1/reservations?renterId=&status=&page=&size=` | US29, US32 | ✅ |
+| `POST` | `/api/v1/reservations/{id}/cancel` | US31 | ✅ |
 
 ---
 
 ## 📋 Conclusión
 
-### US culminadas (conectadas al backend): 7 de 18
+### US plenamente conectadas al backend: 13 de 18 (72%)
 
 | US | Nombre | Módulo |
 |---|---|---|
@@ -300,27 +454,47 @@ Todas las US del módulo de booking comparten la misma situación: **las pantall
 | US04 | Seleccionar tipo de cuenta | IAM |
 | US06 | Subir documentos de verificación | IAM |
 | US21 | Ver resumen de vehículo disponible | Catálogo |
+| US24 | Iniciar reserva de vehículo | Booking |
+| US25 | Confirmar datos de reserva | Booking |
+| US27 | Visualizar cálculo total de reserva | Booking |
+| US28 | Confirmar y pagar reserva | Booking |
+| US29 | Ver mis reservas organizadas por estado | Booking |
+| US31 | Cancelar reserva | Booking |
+| US32 | Ver historial de reservas pasadas | Booking |
 
-*(US07 queda como parcial — requiere endpoint o UI adicional para mostrar el estado)*
+### US parcialmente conectadas: 5
 
-### US pendientes de conectar al backend: 12
-
-| US | Nombre | Acción necesaria |
+| US | Nombre | Qué falta |
 |---|---|---|
-| US07 | Consultar estado de verificación | Agregar endpoint + UI |
-| US21 | ~~Ver resumen de vehículo~~ | ✅ Completada en `feature/catalog` |
-| US24 | Iniciar reserva | Crear API + repositorio + ViewModel |
-| US25 | Confirmar datos de reserva | Crear API + repositorio + ViewModel |
-| US26 | Seleccionar cobertura | Crear API + repositorio + ViewModel |
-| US27 | Visualizar cálculo total | Crear API + repositorio + ViewModel |
-| US28 | Confirmar y pagar reserva | Crear API + repositorio + ViewModel + pasarela de pago |
-| US29 | Ver mis reservas por estado | Crear API + repositorio + ViewModel |
-| US30 | Ver detalle de reserva | Crear pantalla + API + ViewModel |
-| US31 | Cancelar reserva | Crear API + repositorio + UI |
-| US32 | Ver historial de reservas | Conectar datos reales al ViewModel |
-| US44 | Registrar pago | Crear API + repositorio + ViewModel |
-| US45 | Ver resumen de pago | Crear pantalla + API + ViewModel |
+| US07 | Consultar estado de verificación | Endpoint `GET /api/v1/auth/kyc/status` o UI dedicada usando campos del login |
+| US26 | Seleccionar cobertura de reserva | Endpoint `GET /api/v1/coverage-plans` para obtener coberturas dinámicas del backend |
+| US30 | Ver detalle de una reserva | Pantalla `BookingDetailScreen` + endpoint `GET /api/v1/reservations/{id}` |
+| US44 | Registrar pago de reserva | Endpoint dedicado `POST /api/v1/payments` + integración con pasarela de pago |
+| US45 | Ver resumen de pago | Pantalla/endpoint dedicado de resumen de pago post-reserva |
+
+### 🆕 Cambios respecto al análisis anterior (2026-06-14)
+
+| Aspecto | Antes (feature/catalog) | Ahora (develop) |
+|---|---|---|
+| Booking API | ❌ No existía | ✅ `BookingApi` con 3 endpoints |
+| Booking Repository | ❌ No existía | ✅ `BookingRepository` + `BookingRepositoryImpl` |
+| Booking DTOs | ❌ No existían | ✅ `BookingDto`, `BookingResponse`, `CreateBookingRequest`, `CancelBookingRequest` |
+| Booking ViewModels | ❌ No existían | ✅ `BookingConfirmationViewModel` + `BookingsViewModel` |
+| Booking Screens (datos) | ❌ Hardcodeados (mock) | ✅ Datos reales del backend |
+| US conectadas | 7 de 18 (39%) | 13 de 18 (72%) |
+| US parciales | 1 (US07) | 5 (US07, US26, US30, US44, US45) |
+| US no conectadas | 11 (todo Booking) | **0** — ninguna US está completamente desconectada |
+
+### 📦 Commits de la integración Booking (rama `develop`)
+
+| Commit | Descripción |
+|---|---|
+| `f2a40b9` | feat(booking): set up data and domain layers for backend reservation integration |
+| `f0c3436` | feat(booking): integrate bookings presentation layer and ViewModels with backend |
+| `f7417ee` | fix(booking): make pickupPhotos and returnPhotos nullable in DTOs to handle null backend responses |
+| `6951ba2` | feat(booking): implement reservation cancellation and style success alert dialog in white |
+| `0222ba2` | style: increase bottom padding/spacer to 140dp across dashboard tabs to avoid overlapping floating nav bar |
 
 ---
 
-> **Nota metodológica:** Una US se considera culminada cuando su funcionalidad está conectada al backend real (no mock). La sola existencia de la UI sin capa de datos o con mock no es suficiente.
+> **Nota metodológica:** Una US se considera **culminada (✅)** cuando su funcionalidad está conectada al backend real (no mock). **Parcial (⚠️)** significa que la funcionalidad principal está conectada pero falta algún endpoint, pantalla, o los datos complementarios son hardcodeados. **No conectada (❌)** significa que la funcionalidad solo existe en la UI con datos mock o no existe en absoluto.
