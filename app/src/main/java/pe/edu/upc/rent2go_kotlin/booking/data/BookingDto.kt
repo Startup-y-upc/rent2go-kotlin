@@ -28,8 +28,8 @@ data class BookingDto(
     val pickupLocation: String,
     val returnLocation: String,
     val coveragePlan: String,
-    val pickupPhotos: List<String> = emptyList(),
-    val returnPhotos: List<String> = emptyList(),
+    val pickupPhotos: List<String>? = null,
+    val returnPhotos: List<String>? = null,
     val damageReport: String? = null
 )
 
@@ -44,8 +44,8 @@ data class CreateBookingRequest(
     val pickupLocation: String,
     val returnLocation: String,
     val coveragePlan: String,
-    val pickupPhotos: List<String> = emptyList(),
-    val returnPhotos: List<String> = emptyList()
+    val pickupPhotos: List<String>? = emptyList(),
+    val returnPhotos: List<String>? = emptyList()
 )
 
 fun BookingDto.toDomain(): Booking {
@@ -64,8 +64,8 @@ fun BookingDto.toDomain(): Booking {
         pickupLocation = pickupLocation,
         returnLocation = returnLocation,
         coveragePlan = coveragePlan,
-        pickupPhotos = pickupPhotos,
-        returnPhotos = returnPhotos,
+        pickupPhotos = pickupPhotos ?: emptyList(),
+        returnPhotos = returnPhotos ?: emptyList(),
         damageReport = damageReport
     )
 }
