@@ -165,10 +165,10 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
   - Mapa de Google comentado (falta `latitude`/`longitude` en el backend)
   - `rating` y `ownerName` eliminados de la UI
   - Paginación implementada
-- **⚠️ Bugs encontrados en el backend (no bloquean el app):**
-  - `features` no se persiste (el backend siempre devuelve `[]`)
-  - `primaryImageUrl` no se persiste (el backend siempre devuelve `null`)
-  - El app ya tiene medidas defensivas para ambos casos (placeholder gris, lista vacía)
+- **✅ Bugs del backend corregidos (2026-06-22):**
+  - `features` ya se persiste y devuelve correctamente
+  - `primaryImageUrl` ya se persiste y devuelve correctamente
+  - El app mantiene medidas defensivas para ambos casos (placeholder gris, lista vacía) por robustez ante errores de red
 
 ---
 

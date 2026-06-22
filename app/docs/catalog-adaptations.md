@@ -1,6 +1,6 @@
 # Adaptaciones del Módulo Catálogo
 
-**Fecha:** 2026-06-14
+**Fecha:** 2026-06-14 (actualizado 2026-06-22 — bugs corregidos por el backend)
 **Rama:** `feature/catalog`
 **US:** US21 — Ver resumen de vehículo disponible
 
@@ -8,22 +8,11 @@ Este documento registra las diferencias entre lo que existía en la UI (mock) y 
 
 ---
 
-## 1. Mapa de Google comentado
+## 1. Mapa de Google — ✅ Restaurado
 
-**Problema:** La pantalla `ExploreScreen` tenía un componente `GoogleMap` con `Marker` hardcodeados en Madrid. El backend (`GET /api/v1/vehicles`) no devuelve coordenadas `latitude`/`longitude`.
+**Antes (2026-06-14):** La pantalla `ExploreScreen` tenía el mapa comentado porque el backend no devolvía `latitude`/`longitude`.
 
-**Solución temporal:** Se eliminó el bloque del mapa de `ExploreScreen.kt`.
-
-**Qué falta en el backend:**
-Agregar los campos `latitude` y `longitude` (tipo `Double`) en la respuesta de `VehicleDto`:
-```json
-{
-  "latitude": 40.4168,
-  "longitude": -3.7038
-}
-```
-
-**Acción futura:** Cuando el backend incluya coordenadas, restaurar el `GoogleMap` con `Marker` dinámicos basados en los datos reales.
+**Ahora:** El backend ya incluye `latitude` y `longitude` en `VehicleResource`. El `GoogleMap` está activo con `Marker` dinámicos basados en los vehículos reales (`ExploreScreen.kt:122-135`).
 
 ---
 
@@ -87,37 +76,27 @@ El `DependencyProvider` ahora expone `vehicleRepository: VehicleRepository` (imp
 
 ---
 
-## 6. Hallazgos del backend (bugs por corregir)
+## 6. Hallazgos del backend (CORREGIDOS ✅)
 
-Probado con `POST /api/v1/vehicles` y `GET /api/v1/vehicles` el 2026-06-14.
+Probado con `POST /api/v1/vehicles` y `GET /api/v1/vehicles` el 2026-06-14. **Corregido por el backend antes del 2026-06-22.**
 
-### 6.1 `features` no se persiste
+### 6.1 `features` no se persiste — ✅ CORREGIDO
 
-**Request enviado:**
-```json
-"features": ["Aire acondicionado", "Bluetooth", "Techo corredizo", "Sensores de estacionamiento", "Volante deportivo"]
-```
-
-**Respuesta del backend:**
+**Antes (2026-06-14):**
 ```json
 "features": []
 ```
 
-**Causa probable:** La tabla relacional `vehicle_features` no está recibiendo los datos, o el mapper del backend no está procesando el array.
+**Ahora:** El backend persiste y devuelve el array de features correctamente. Verificado en el schema `VehicleResource` del OpenAPI spec.
 
-### 6.2 `primaryImageUrl` no se persiste
+### 6.2 `primaryImageUrl` no se persiste — ✅ CORREGIDO
 
-**Request enviado:**
-```json
-"primaryImageUrl": "https://img.remediosdigitales.com/391157/mini-cooper-s-2021-11/1366_2000.jpg"
-```
-
-**Respuesta del backend:**
+**Antes (2026-06-14):**
 ```json
 "primaryImageUrl": null
 ```
 
-**Causa probable:** El campo en la entidad del backend tiene un nombre distinto (ej: `image_url`) o no está mapeado en el DTO de respuesta.
+**Ahora:** El backend persiste y devuelve `primaryImageUrl` correctamente. Verificado en el schema `VehicleResource` del OpenAPI spec.
 
 ### 6.3 `categoryId` vs `categoryName`
 
