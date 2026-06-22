@@ -14,6 +14,10 @@ object SessionManager {
     private const val KEY_ROLE = "user_role"
     private const val KEY_USERNAME = "user_username"
     private const val KEY_PROFILE_IMAGE_URL = "user_profile_image_url"
+    private const val KEY_STATUS = "user_status"
+    private const val KEY_EMAIL_VERIFIED = "user_email_verified"
+    private const val KEY_PHONE_VERIFIED = "user_phone_verified"
+    private const val KEY_TWO_FACTOR_ENABLED = "user_two_factor_enabled"
     private const val KEY_REMEMBER_ME = "remember_me"
 
     private var sharedPreferences: SharedPreferences? = null
@@ -45,6 +49,10 @@ object SessionManager {
             putString(KEY_ROLE, user.role)
             user.username?.let { putString(KEY_USERNAME, it) }
             user.profileImageUrl?.let { putString(KEY_PROFILE_IMAGE_URL, it) }
+            putString(KEY_STATUS, user.status)
+            putBoolean(KEY_EMAIL_VERIFIED, user.emailVerified)
+            putBoolean(KEY_PHONE_VERIFIED, user.phoneVerified)
+            putBoolean(KEY_TWO_FACTOR_ENABLED, user.twoFactorEnabled)
             apply()
         }
     }
@@ -58,6 +66,10 @@ object SessionManager {
             putString(KEY_ROLE, user.role)
             user.username?.let { putString(KEY_USERNAME, it) }
             user.profileImageUrl?.let { putString(KEY_PROFILE_IMAGE_URL, it) }
+            putString(KEY_STATUS, user.status)
+            putBoolean(KEY_EMAIL_VERIFIED, user.emailVerified)
+            putBoolean(KEY_PHONE_VERIFIED, user.phoneVerified)
+            putBoolean(KEY_TWO_FACTOR_ENABLED, user.twoFactorEnabled)
             apply()
         }
     }
@@ -81,7 +93,11 @@ object SessionManager {
             phone = getPrefs().getString(KEY_PHONE, "") ?: "",
             role = getPrefs().getString(KEY_ROLE, "") ?: "",
             username = getPrefs().getString(KEY_USERNAME, null),
-            profileImageUrl = getPrefs().getString(KEY_PROFILE_IMAGE_URL, null)
+            profileImageUrl = getPrefs().getString(KEY_PROFILE_IMAGE_URL, null),
+            status = getPrefs().getString(KEY_STATUS, "") ?: "",
+            emailVerified = getPrefs().getBoolean(KEY_EMAIL_VERIFIED, false),
+            phoneVerified = getPrefs().getBoolean(KEY_PHONE_VERIFIED, false),
+            twoFactorEnabled = getPrefs().getBoolean(KEY_TWO_FACTOR_ENABLED, false)
         )
     }
 

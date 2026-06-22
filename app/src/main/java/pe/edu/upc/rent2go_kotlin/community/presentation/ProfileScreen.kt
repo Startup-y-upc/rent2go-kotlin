@@ -118,6 +118,12 @@ fun ProfileScreen(
                 color = Color.White.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(16.dp)
             ) {
+                val kycSubmitted = user?.status == "ACTIVE" || user?.status == "VERIFIED" ||
+                        authViewModel.isKycSuccess
+                val emailOk = user?.emailVerified == true
+                val phoneOk = user?.phoneVerified == true
+                val verifiedCount = listOf(kycSubmitted, emailOk, phoneOk, profileUploaded).count { it }
+
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -135,22 +141,22 @@ fun ProfileScreen(
                             )
                         }
                         Text(
-                            text = "${if (profileUploaded) "4" else "3"} / 4", 
-                            color = PrimaryCyan, 
+                            text = "$verifiedCount / 4",
+                            color = PrimaryCyan,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    VerificationItem("Identidad (DNI)", true)
+                    VerificationItem("Identidad y documentos (KYC)", kycSubmitted)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
-                    VerificationItem("Carnet de conducir", true)
+                    VerificationItem("Email verificado", emailOk)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
-                    VerificationItem("Email y teléfono", true)
+                    VerificationItem("Teléfono verificado", phoneOk)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     VerificationItem(
-                        label = "Foto de perfil", 
+                        label = "Foto de perfil",
                         isVerified = profileUploaded,
                         onVerifyClick = { profileUploaded = true }
                     )

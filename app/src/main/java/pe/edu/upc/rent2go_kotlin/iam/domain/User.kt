@@ -7,5 +7,9 @@ data class User(
     val phone: String,
     val role: String, // "RENTER" or "OWNER"
     val username: String? = null,
-    val profileImageUrl: String? = null
+    val profileImageUrl: String? = null,
+    val status: String = "",
+    val emailVerified: Boolean = false,
+    val phoneVerified: Boolean = false,
+    val twoFactorEnabled: Boolean = false
 )

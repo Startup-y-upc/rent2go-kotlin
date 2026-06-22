@@ -19,6 +19,7 @@ interface AuthRepository {
         dniBackUrl: String,
         driverLicenseUrl: String
     ): Boolean
+    suspend fun uploadImage(imageBytes: ByteArray, fileName: String): String
     suspend fun requestPasswordReset(email: String): Boolean
     suspend fun confirmPasswordReset(token: String, newPassword: String): Boolean
 }

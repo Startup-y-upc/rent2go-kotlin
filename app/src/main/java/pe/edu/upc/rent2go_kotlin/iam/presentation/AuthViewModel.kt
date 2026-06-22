@@ -26,11 +26,16 @@ class AuthViewModel(
     var registerUsername by mutableStateOf("")
     var selectedAccountType by mutableStateOf("RENTER") // OWNER or RENTER
 
-    // KYC Form State (mock paths/URLs)
+    // KYC Form State
     var kycDniNumber by mutableStateOf("")
-    var kycDniFrontUrl by mutableStateOf("https://rent2go-uploads.s3.amazonaws.com/dni_front.jpg")
-    var kycDniBackUrl by mutableStateOf("https://rent2go-uploads.s3.amazonaws.com/dni_back.jpg")
-    var kycLicenseUrl by mutableStateOf("https://rent2go-uploads.s3.amazonaws.com/license.jpg")
+    var kycDniFrontUrl by mutableStateOf("")
+    var kycDniBackUrl by mutableStateOf("")
+    var kycLicenseUrl by mutableStateOf("")
+
+    // Upload progress per image
+    var isUploadingDniFront by mutableStateOf(false)
+    var isUploadingDniBack by mutableStateOf(false)
+    var isUploadingLicense by mutableStateOf(false)
 
     // UI Status State
     var isLoading by mutableStateOf(false)
@@ -128,12 +133,26 @@ class AuthViewModel(
         }
     }
 
-    fun submitKyc(onSuccess: () -> Unit) {
-        val userId = currentUser?.id ?: 1 // Fallback a id 1 si no hay usuario registrado/logueado
-        val name = currentUser?.fullName ?: registerFullName.ifBlank { "Usuario de Prueba" }
+    fun uploadImage(imageBytes: ByteArray, fileName: String, onSuccess: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val url = repository.uploadImage(imageBytes, fileName)
+                onSuccess(url)
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Error al subir la imagen"
+            }
+        }
+    }
 
-        // Si no se ha completado el número de DNI, poner un placeholder
-        val idNum = kycDniNumber.ifBlank { "77777777" }
+    fun submitKyc(onSuccess: () -> Unit) {
+        val userId = currentUser?.id ?: 1
+        val name = currentUser?.fullName ?: registerFullName.ifBlank { "Usuario" }
+        val idNum = kycDniNumber.ifBlank { "00000000" }
+
+        if (kycDniFrontUrl.isBlank() || kycDniBackUrl.isBlank() || kycLicenseUrl.isBlank()) {
+            errorMessage = "Por favor, suba todas las imágenes requeridas."
+            return
+        }
 
         viewModelScope.launch {
             isLoading = true
@@ -149,6 +168,11 @@ class AuthViewModel(
                 )
                 if (success) {
                     isKycSuccess = true
+                    // Refresh user data to get updated verification status
+                    try {
+                        val refreshedUser = repository.getMe()
+                        currentUser = refreshedUser
+                    } catch (_: Exception) { /* non-fatal */ }
                     onSuccess()
                 } else {
                     errorMessage = "Error al validar la documentación KYC"

@@ -93,3 +93,8 @@ data class PasswordResetConfirm(
     val newPassword: String
 )
 
+@Serializable
+data class ImageUploadResponse(
+    val url: String
+)
+

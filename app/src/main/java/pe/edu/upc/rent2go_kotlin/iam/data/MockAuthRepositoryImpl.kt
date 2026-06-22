@@ -44,6 +44,11 @@ class MockAuthRepositoryImpl : AuthRepository {
         return true
     }
 
+    override suspend fun uploadImage(imageBytes: ByteArray, fileName: String): String {
+        delay(500)
+        return "https://rent2go-uploads.s3.amazonaws.com/mock_${fileName}"
+    }
+
     override suspend fun confirmPasswordReset(token: String, newPassword: String): Boolean {
         delay(1000)
         return true

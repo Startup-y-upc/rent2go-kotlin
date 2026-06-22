@@ -1,5 +1,8 @@
 package pe.edu.upc.rent2go_kotlin.iam.presentation
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +28,64 @@ fun ValidationScreen(
     viewModel: AuthViewModel,
     onFinishClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    // Track which card we're uploading for
+    var uploadingCard by remember { mutableStateOf<String?>(null) }
+
+    // Helper: read bytes from a content URI
+    fun readBytes(uri: Uri): ByteArray? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun getFileName(uri: Uri): String {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        return cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0) it.getString(nameIndex) else "image.jpg"
+            } else "image.jpg"
+        } ?: "image.jpg"
+    }
+
+    // Image pickers for each document
+    val dniFrontPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = readBytes(uri) ?: return@rememberLauncherForActivityResult
+            uploadingCard = "dniFront"
+            viewModel.uploadImage(bytes, getFileName(uri)) { url ->
+                viewModel.kycDniFrontUrl = url
+                uploadingCard = null
+            }
+        }
+    }
+
+    val dniBackPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = readBytes(uri) ?: return@rememberLauncherForActivityResult
+            uploadingCard = "dniBack"
+            viewModel.uploadImage(bytes, getFileName(uri)) { url ->
+                viewModel.kycDniBackUrl = url
+                uploadingCard = null
+            }
+        }
+    }
+
+    val licensePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = readBytes(uri) ?: return@rememberLauncherForActivityResult
+            uploadingCard = "license"
+            viewModel.uploadImage(bytes, getFileName(uri)) { url ->
+                viewModel.kycLicenseUrl = url
+                uploadingCard = null
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,17 +120,47 @@ fun ValidationScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // DNI - Front
         UploadCard(
-            title = "DNI - Anverso",
-            isUploaded = true
+            title = "DNI - Anverso (Frente)",
+            subtitle = "Foto clara del frente de tu DNI",
+            isUploaded = viewModel.kycDniFrontUrl.isNotBlank(),
+            isUploading = uploadingCard == "dniFront",
+            onUploadClick = { dniFrontPicker.launch("image/*") },
+            onDeleteClick = {
+                viewModel.kycDniFrontUrl = ""
+                viewModel.isUploadingDniFront = false
+            }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        // DNI - Back
+        UploadCard(
+            title = "DNI - Reverso (Atrás)",
+            subtitle = "Foto clara del reverso de tu DNI",
+            isUploaded = viewModel.kycDniBackUrl.isNotBlank(),
+            isUploading = uploadingCard == "dniBack",
+            onUploadClick = { dniBackPicker.launch("image/*") },
+            onDeleteClick = {
+                viewModel.kycDniBackUrl = ""
+                viewModel.isUploadingDniBack = false
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Driver's License
         UploadCard(
             title = "Licencia de conducir",
             subtitle = "Vigente, en color y completa",
-            isUploaded = false
+            isUploaded = viewModel.kycLicenseUrl.isNotBlank(),
+            isUploading = uploadingCard == "license",
+            onUploadClick = { licensePicker.launch("image/*") },
+            onDeleteClick = {
+                viewModel.kycLicenseUrl = ""
+                viewModel.isUploadingLicense = false
+            }
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -116,7 +208,7 @@ fun ValidationScreen(
                     .fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan),
                 shape = RoundedCornerShape(12.dp),
-                enabled = !viewModel.isLoading
+                enabled = !viewModel.isLoading && uploadingCard == null
             ) {
                 if (viewModel.isLoading) {
                     CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
@@ -130,7 +222,7 @@ fun ValidationScreen(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
@@ -139,7 +231,10 @@ fun ValidationScreen(
 fun UploadCard(
     title: String,
     subtitle: String? = null,
-    isUploaded: Boolean
+    isUploaded: Boolean,
+    isUploading: Boolean = false,
+    onUploadClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -154,19 +249,19 @@ fun UploadCard(
             ) {
                 Surface(
                     modifier = Modifier.size(80.dp),
-                    color = Color.White.copy(alpha = 0.1f),
+                    color = if (isUploaded) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Image,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = if (isUploaded) Color(0xFF4CAF50) else Color.White,
                             modifier = Modifier.size(40.dp)
                         )
                     }
                 }
-                
+
                 Column(
                     modifier = Modifier.weight(1f).padding(start = 16.dp),
                     horizontalAlignment = Alignment.End
@@ -175,42 +270,70 @@ fun UploadCard(
                     if (subtitle != null) {
                         Text(text = subtitle, color = TextGray, fontSize = 10.sp)
                     }
-                    
-                    if (isUploaded) {
+
+                    if (isUploading) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
-                            Text(text = "✓ SUBIDO", color = Color(0xFF4CAF50), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            CircularProgressIndicator(
+                                color = PrimaryCyan,
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "SUBIENDO...",
+                                color = PrimaryCyan,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else if (isUploaded) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 16.dp)
+                        ) {
+                            Text(
+                                text = "✓ SUBIDO",
+                                color = Color(0xFF4CAF50),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = onUploadClick,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    enabled = !isUploading
                 ) {
                     Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = if (isUploaded) "Volver a subir" else "Subir foto", fontSize = 12.sp)
+                    Text(
+                        text = if (isUploaded) "Volver a subir" else "Subir foto",
+                        fontSize = 12.sp
+                    )
                 }
-                
+
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = onDeleteClick,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    enabled = isUploaded && !isUploading
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))

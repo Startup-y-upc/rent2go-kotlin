@@ -1,6 +1,6 @@
 # Estado de Conexión Backend — Historias de Usuario
 
-**Fecha de análisis:** 2026-06-22 (actualizado tras implementar US30: BookingDetailScreen + endpoint GET /api/v1/reservations/{id})
+**Fecha de análisis:** 2026-06-22 (actualizado tras implementar US07: verificación KYC con imágenes reales + US30: BookingDetailScreen)
 **Backend base URL:** `https://rent2go-backend-production.up.railway.app/`
 
 Este documento clasifica cada Historia de Usuario (US) del archivo [`user-stories.md`](user-stories.md) según si su implementación está conectada al backend real o no. El criterio para dar una US por **culminada (✅)** es que la funcionalidad esté respaldada por al menos un endpoint del backend y que la capa de datos del app consuma dicho endpoint (no un mock).
@@ -11,13 +11,13 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 
 | Módulo | Total US | ✅ Conectadas | ⚠️ Parcial | ❌ No conectadas |
 |---|---|---|---|---|
-| IAM (Identidad y Acceso) | 6 | 5 | 1 | 0 |
+| IAM (Identidad y Acceso) | 6 | 6 | 0 | 0 |
 | Catálogo (Vehículos) | 1 | 1 | 0 | 0 |
 | Booking (Reservas y Pagos) | 11 | 8 | 3 | 0 |
 | Comunidad (Perfil) | N/A (soporte) | 1 | — | — |
-| **Total** | **18** | **14** | **4** | **0** |
+| **Total** | **18** | **15** | **3** | **0** |
 
-**Progreso real:** 14 de 18 US plenamente conectadas al backend (**78%**).  
+**Progreso real:** 15 de 18 US plenamente conectadas al backend (**83%**).  
 **Progreso incluyendo parciales:** 18 de 18 US tienen al menos conexión parcial (**100%**).
 
 ---
@@ -114,17 +114,37 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 
 ---
 
-### ⚠️ US07: Consultar estado de verificación
+### ✅ US07: Consultar estado de verificación
 
-- **Estado:** PARCIALMENTE CONECTADA
+- **Estado:** CULMINADA
+- **Endpoints:**
+  - `GET /api/v1/auth/me` — devuelve `status`, `email_verified`, `phone_verified`, `two_factor_enabled`
+  - `POST /api/v1/auth/login` — devuelve `status`, `emailVerified`, `phoneVerified`, `twoFactorEnabled`
+  - `POST /api/uploads/images` — subida de imágenes KYC (DNI frontal, DNI reverso, licencia)
+  - `POST /api/v1/auth/kyc` — envío de datos KYC con URLs de imágenes
 - **Evidencia:**
-  - No existe un endpoint dedicado para consultar el estado de verificación KYC.
-  - Sin embargo, la respuesta del login (`LoginResponse`) incluye los campos `status`, `emailVerified`, `phoneVerified` que el backend devuelve tras la autenticación.
-  - La pantalla de perfil (`ProfileScreen.kt`) muestra datos de reputación obtenidos del módulo **community**, no del estado KYC.
-  - No hay una pantalla que muestre explícitamente el estado de verificación del usuario.
-- **Qué falta para considerar completa:**
-  - Un endpoint `GET /api/v1/auth/kyc/status` (o similar) para consultar el estado de verificación.
-  - O, alternativamente, aprovechar los campos `status`/`emailVerified`/`phoneVerified` del `LoginResponse` y mostrarlos en la UI de perfil.
+  - `User.kt:10-13` — Modelo de dominio incluye `status`, `emailVerified`, `phoneVerified`, `twoFactorEnabled`.
+  - `AuthRepositoryImpl.kt` — `login()`, `getMe()`, `register()` mapean los campos de verificación desde los DTOs.
+  - `SessionManager.kt` — Persiste los campos de verificación en `SharedPreferences`.
+  - `AuthApi.kt:28-30` — `uploadImage()` endpoint multipart para subir imágenes al backend.
+  - `AuthRepositoryImpl.kt:133-149` — `uploadImage()` envía la imagen y retorna la URL.
+  - `ValidationScreen.kt` — Image picker real con `ActivityResultContracts.GetContent()` para DNI frontal, DNI reverso y licencia de conducir. Sube cada imagen al backend y obtiene URLs reales.
+  - `AuthViewModel.kt:131-139` — `uploadImage()` método que sube la imagen al backend.
+  - `AuthViewModel.kt:141-175` — `submitKyc()` valida que las 3 imágenes estén subidas, envía KYC con URLs reales, y refresca `currentUser` vía `getMe()` para obtener el estado de verificación actualizado.
+  - `ProfileScreen.kt:116-158` — Tarjeta "Confianza y verificación" conectada a datos reales:
+    - "Identidad y documentos (KYC)" → `user.status == "ACTIVE"` o `isKycSuccess`
+    - "Email verificado" → `user.emailVerified`
+    - "Teléfono verificado" → `user.phoneVerified`
+    - Contador real (`verifiedCount / 4`) basado en los estados reales.
+- **Diagrama de flujo:**
+  ```
+  ValidationScreen → Image Picker → uploadImage() → POST /api/uploads/images → URL
+                  → submitKyc() → POST /api/v1/auth/kyc → Backend
+                  → getMe() → GET /api/v1/auth/me → User actualizado con status
+
+  ProfileScreen → authViewModel.currentUser → emailVerified, phoneVerified, status
+               → profileViewModel.loadUserReputation(userId) → community data
+  ```
 
 ---
 
@@ -446,7 +466,9 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 |---|---|---|---|
 | `POST` | `/api/v1/auth/login` | US02 | ✅ |
 | `POST` | `/api/v1/auth/register` | US01, US04 | ✅ |
-| `POST` | `/api/v1/auth/kyc` | US06 | ✅ |
+| `POST` | `/api/v1/auth/kyc` | US06, US07 | ✅ |
+| `POST` | `/api/uploads/images` | US06, US07 | ✅ |
+| `GET` | `/api/v1/auth/me` | US07 | ✅ |
 | `POST` | `/api/v1/auth/password/request` | US03 | ✅ |
 | `POST` | `/api/v1/auth/password/reset` | US03 | ✅ |
 | `GET` | `/api/v1/community-trust/users/{userId}/reputation` | Perfil | ✅ |
@@ -461,7 +483,7 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 
 ## 📋 Conclusión
 
-### US plenamente conectadas al backend: 14 de 18 (78%)
+### US plenamente conectadas al backend: 15 de 18 (83%)
 
 | US | Nombre | Módulo |
 |---|---|---|
@@ -470,6 +492,7 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 | US03 | Recuperar contraseña | IAM |
 | US04 | Seleccionar tipo de cuenta | IAM |
 | US06 | Subir documentos de verificación | IAM |
+| US07 | Consultar estado de verificación | IAM |
 | US21 | Ver resumen de vehículo disponible | Catálogo |
 | US24 | Iniciar reserva de vehículo | Booking |
 | US25 | Confirmar datos de reserva | Booking |
@@ -480,11 +503,10 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 | US31 | Cancelar reserva | Booking |
 | US32 | Ver historial de reservas pasadas | Booking |
 
-### US parcialmente conectadas: 4
+### US parcialmente conectadas: 3
 
 | US | Nombre | Qué falta |
 |---|---|---|
-| US07 | Consultar estado de verificación | Endpoint `GET /api/v1/auth/kyc/status` o UI dedicada usando campos del login |
 | US26 | Seleccionar cobertura de reserva | Endpoint `GET /api/v1/coverage-plans` para obtener coberturas dinámicas del backend |
 | US44 | Registrar pago de reserva | Endpoint dedicado `POST /api/v1/payments` + integración con pasarela de pago |
 | US45 | Ver resumen de pago | Pantalla/endpoint dedicado de resumen de pago post-reserva |
