@@ -26,15 +26,54 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 import pe.edu.upc.rent2go_kotlin.iam.presentation.AuthViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.automirrored.filled.Logout
+import coil.compose.AsyncImage
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun ProfileScreen(
     authViewModel: AuthViewModel,
     profileViewModel: ProfileViewModel = viewModel(),
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    onKycClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val user = authViewModel.currentUser
-    var profileUploaded by remember { mutableStateOf(false) }
+    var isUploadingProfile by remember { mutableStateOf(false) }
+
+    // Helper: read bytes from a content URI
+    fun readBytes(uri: Uri): ByteArray? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun getFileName(uri: Uri): String {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        return cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0) it.getString(nameIndex) else "profile.jpg"
+            } else "profile.jpg"
+        } ?: "profile.jpg"
+    }
+
+    val profileImagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = readBytes(uri)
+            if (bytes != null) {
+                isUploadingProfile = true
+                authViewModel.uploadImage(bytes, getFileName(uri)) { url ->
+                    authViewModel.updateProfileImage(url)
+                    isUploadingProfile = false
+                }
+            }
+        }
+    }
 
     LaunchedEffect(user) {
         if (user != null) {
@@ -71,12 +110,28 @@ fun ProfileScreen(
                         shape = CircleShape,
                         color = Color.White.copy(alpha = 0.1f)
                     ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                        if (isUploadingProfile) {
+                            Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    color = PrimaryCyan,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        } else if (!user?.profileImageUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = user?.profileImageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
@@ -122,6 +177,7 @@ fun ProfileScreen(
                         authViewModel.isKycSuccess
                 val emailOk = user?.emailVerified == true
                 val phoneOk = user?.phoneVerified == true
+                val profileUploaded = !user?.profileImageUrl.isNullOrBlank()
                 val verifiedCount = listOf(kycSubmitted, emailOk, phoneOk, profileUploaded).count { it }
 
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -149,7 +205,11 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    VerificationItem("Identidad y documentos (KYC)", kycSubmitted)
+                    VerificationItem(
+                        label = "Identidad y documentos (KYC)",
+                        isVerified = kycSubmitted,
+                        onVerifyClick = if (!kycSubmitted) onKycClick else null
+                    )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     VerificationItem("Email verificado", emailOk)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
@@ -158,7 +218,9 @@ fun ProfileScreen(
                     VerificationItem(
                         label = "Foto de perfil",
                         isVerified = profileUploaded,
-                        onVerifyClick = { profileUploaded = true }
+                        onVerifyClick = if (!profileUploaded && !isUploadingProfile) {
+                            { profileImagePicker.launch("image/*") }
+                        } else null
                     )
                 }
             }

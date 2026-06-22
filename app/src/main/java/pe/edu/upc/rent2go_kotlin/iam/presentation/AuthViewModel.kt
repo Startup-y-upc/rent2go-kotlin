@@ -76,6 +76,20 @@ class AuthViewModel(
         errorMessage = null
     }
 
+    fun clearRegistrationFields() {
+        registerFullName = ""
+        registerEmail = ""
+        registerPhone = ""
+        registerPassword = ""
+        registerUsername = ""
+        kycDniNumber = ""
+        kycDniFrontUrl = ""
+        kycDniBackUrl = ""
+        kycLicenseUrl = ""
+        isKycSuccess = false
+        clearError()
+    }
+
     fun login(rememberMe: Boolean, onSuccess: () -> Unit) {
         if (loginEmail.isBlank() || loginPassword.isBlank()) {
             errorMessage = "Por favor, complete todos los campos."
@@ -115,7 +129,8 @@ class AuthViewModel(
             isLoading = true
             errorMessage = null
             try {
-                val user = repository.register(
+                // Registrar el usuario en el backend
+                repository.register(
                     username = registerUsername.trim(),
                     fullName = registerFullName.trim(),
                     email = registerEmail.trim(),
@@ -123,7 +138,12 @@ class AuthViewModel(
                     password = registerPassword,
                     accountType = selectedAccountType
                 )
-                currentUser = user
+                // Auto-login automático para obtener el token JWT de sesión
+                val loggedInUser = repository.login(registerEmail.trim(), registerPassword)
+                currentUser = loggedInUser
+                isAuthSuccess = true
+                loginEmail = registerEmail.trim()
+                loginPassword = registerPassword
                 onSuccess()
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Error al registrar cuenta"
@@ -132,6 +152,14 @@ class AuthViewModel(
             }
         }
     }
+
+    fun updateProfileImage(url: String) {
+        val user = currentUser ?: return
+        val updatedUser = user.copy(profileImageUrl = url)
+        currentUser = updatedUser
+        pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(updatedUser)
+    }
+
 
     fun uploadImage(imageBytes: ByteArray, fileName: String, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
@@ -248,6 +276,7 @@ class AuthViewModel(
         isAuthSuccess = false
         loginEmail = ""
         loginPassword = ""
+        clearRegistrationFields()
         onSuccess()
     }
 }

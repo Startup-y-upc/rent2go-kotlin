@@ -1,6 +1,7 @@
 package pe.edu.upc.rent2go_kotlin.common.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -23,10 +24,11 @@ import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingDetailScreen
 fun SetupNavGraph(navController: NavHostController) {
     val authViewModel: AuthViewModel = viewModel()
 
-    // Verificar si hay token guardado (sincrónico) para decidir la ruta inicial.
-    // El AuthViewModel.init() llamará a /api/v1/auth/me para hidratar los datos frescos.
-    val hasSession = pe.edu.upc.rent2go_kotlin.common.SessionManager.isUserLoggedIn()
-    val startDestination = if (authViewModel.currentUser != null || hasSession) "car_list" else "login"
+    // Verificar si hay token guardado
+    val startDestination = remember {
+        val hasSession = pe.edu.upc.rent2go_kotlin.common.SessionManager.isUserLoggedIn()
+        if (authViewModel.currentUser != null || hasSession) "car_list" else "login"
+    }
 
     NavHost(
         navController = navController,
@@ -41,7 +43,7 @@ fun SetupNavGraph(navController: NavHostController) {
                     }
                 },
                 onSignUpClick = {
-                    authViewModel.clearError()
+                    authViewModel.clearRegistrationFields()
                     navController.navigate("sign_up_data")
                 },
                 onForgotPasswordClick = {
@@ -69,12 +71,20 @@ fun SetupNavGraph(navController: NavHostController) {
                 }
             )
         }
-        composable(route = "sign_up_validation") {
+        composable(
+            route = "sign_up_validation?fromProfile={fromProfile}",
+            arguments = listOf(navArgument("fromProfile") { type = NavType.BoolType; defaultValue = false })
+        ) { backStackEntry ->
+            val fromProfile = backStackEntry.arguments?.getBoolean("fromProfile") ?: false
             ValidationScreen(
                 viewModel = authViewModel,
                 onFinishClick = {
-                    navController.navigate("car_list") {
-                        popUpTo("login") { inclusive = true }
+                    if (fromProfile) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate("car_list") {
+                            popUpTo("login") { inclusive = true }
+                        }
                     }
                 }
             )
@@ -108,6 +118,9 @@ fun SetupNavGraph(navController: NavHostController) {
                 },
                 onBookingClick = { bookingId ->
                     navController.navigate("booking_detail/$bookingId")
+                },
+                onKycClick = {
+                    navController.navigate("sign_up_validation?fromProfile=true")
                 }
             )
         }
