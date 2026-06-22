@@ -17,6 +17,7 @@ import pe.edu.upc.rent2go_kotlin.catalog.presentation.MainDashboard
 import pe.edu.upc.rent2go_kotlin.catalog.presentation.CarDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.ChatDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingConfirmationScreen
+import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingDetailScreen
 
 @Composable
 fun SetupNavGraph(navController: NavHostController) {
@@ -104,6 +105,9 @@ fun SetupNavGraph(navController: NavHostController) {
                     navController.navigate("login") {
                         popUpTo("login") { inclusive = true }
                     }
+                },
+                onBookingClick = { bookingId ->
+                    navController.navigate("booking_detail/$bookingId")
                 }
             )
         }
@@ -148,6 +152,18 @@ fun SetupNavGraph(navController: NavHostController) {
                     navController.navigate("car_list") {
                         popUpTo("car_list") { inclusive = true }
                     }
+                }
+            )
+        }
+        composable(
+            route = "booking_detail/{bookingId}",
+            arguments = listOf(navArgument("bookingId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val bookingId = backStackEntry.arguments?.getInt("bookingId") ?: 0
+            BookingDetailScreen(
+                bookingId = bookingId,
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }

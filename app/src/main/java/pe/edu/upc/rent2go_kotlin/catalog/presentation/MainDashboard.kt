@@ -25,7 +25,8 @@ fun MainDashboard(
     authViewModel: AuthViewModel,
     onCarClick: (Int) -> Unit,
     onChatClick: (String) -> Unit,
-    onLogoutClick: () -> Unit
+    onLogoutClick: () -> Unit,
+    onBookingClick: (Int) -> Unit = {}
 ) {
     var selectedScreen by remember { mutableStateOf("Explorar") }
 
@@ -33,7 +34,7 @@ fun MainDashboard(
         // Content area
         when (selectedScreen) {
             "Explorar" -> ExploreScreen(onCarClick = onCarClick)
-            "Reservas" -> BookingsScreen()
+            "Reservas" -> BookingsScreen(onBookingClick = onBookingClick)
             "Mensajes" -> MessagesScreen(onChatClick = onChatClick)
             "Perfil" -> ProfileScreen(
                 authViewModel = authViewModel,

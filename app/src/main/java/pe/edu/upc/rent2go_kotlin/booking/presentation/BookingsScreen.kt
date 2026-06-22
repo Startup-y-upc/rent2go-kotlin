@@ -1,6 +1,7 @@
 package pe.edu.upc.rent2go_kotlin.booking.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +32,7 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
 @Composable
 fun BookingsScreen(
+    onBookingClick: (Int) -> Unit = {},
     viewModel: BookingsViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -215,7 +217,7 @@ fun BookingsScreen(
                     val nextBooking = filteredBookings.first()
                     val vehicle = state.vehicles[nextBooking.vehicleId]
                     item {
-                        NextBookingCard(nextBooking, vehicle, onCancelClick = { bookingToCancel = nextBooking })
+                        NextBookingCard(nextBooking, vehicle, onBookingClick = onBookingClick, onCancelClick = { bookingToCancel = nextBooking })
                     }
                     
                     if (filteredBookings.size > 1) {
@@ -230,13 +232,13 @@ fun BookingsScreen(
                         }
                         items(filteredBookings.drop(1)) { booking ->
                             val v = state.vehicles[booking.vehicleId]
-                            PreviousBookingItem(booking, v, onCancelClick = { bookingToCancel = booking })
+                            PreviousBookingItem(booking, v, onBookingClick = onBookingClick, onCancelClick = { bookingToCancel = booking })
                         }
                     }
                 } else {
                     items(filteredBookings) { booking ->
                         val v = state.vehicles[booking.vehicleId]
-                        PreviousBookingItem(booking, v)
+                        PreviousBookingItem(booking, v, onBookingClick = onBookingClick)
                     }
                 }
             }
@@ -245,7 +247,7 @@ fun BookingsScreen(
 }
 
 @Composable
-fun NextBookingCard(booking: Booking, vehicle: Vehicle?, onCancelClick: () -> Unit) {
+fun NextBookingCard(booking: Booking, vehicle: Vehicle?, onBookingClick: (Int) -> Unit = {}, onCancelClick: () -> Unit) {
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
     val yearAndCategory = if (vehicle != null) "${vehicle.categoryName} · ${vehicle.year}" else ""
     val imageUrl = vehicle?.primaryImageUrl ?: ""
@@ -254,7 +256,7 @@ fun NextBookingCard(booking: Booking, vehicle: Vehicle?, onCancelClick: () -> Un
     Surface(
         color = DarkBlue,
         shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().clickable { onBookingClick(booking.id) }
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -342,7 +344,7 @@ fun NextBookingCard(booking: Booking, vehicle: Vehicle?, onCancelClick: () -> Un
 }
 
 @Composable
-fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?, onCancelClick: (() -> Unit)? = null) {
+fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?, onBookingClick: (Int) -> Unit = {}, onCancelClick: (() -> Unit)? = null) {
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
     val dates = "${booking.startDate} — ${booking.endDate}"
     val price = "S/ ${String.format("%.2f", booking.totalAmount)}"
@@ -351,7 +353,7 @@ fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?, onCancelClick: (() 
     Surface(
         color = Color.White.copy(alpha = 0.4f),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().clickable { onBookingClick(booking.id) }
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

@@ -1,6 +1,6 @@
 # Estado de Conexión Backend — Historias de Usuario
 
-**Fecha de análisis:** 2026-06-17 (actualizado tras rama `develop` — integración del módulo Booking)
+**Fecha de análisis:** 2026-06-22 (actualizado tras implementar US30: BookingDetailScreen + endpoint GET /api/v1/reservations/{id})
 **Backend base URL:** `https://rent2go-backend-production.up.railway.app/`
 
 Este documento clasifica cada Historia de Usuario (US) del archivo [`user-stories.md`](user-stories.md) según si su implementación está conectada al backend real o no. El criterio para dar una US por **culminada (✅)** es que la funcionalidad esté respaldada por al menos un endpoint del backend y que la capa de datos del app consuma dicho endpoint (no un mock).
@@ -13,11 +13,11 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 |---|---|---|---|---|
 | IAM (Identidad y Acceso) | 6 | 5 | 1 | 0 |
 | Catálogo (Vehículos) | 1 | 1 | 0 | 0 |
-| Booking (Reservas y Pagos) | 11 | 7 | 4 | 0 |
+| Booking (Reservas y Pagos) | 11 | 8 | 3 | 0 |
 | Comunidad (Perfil) | N/A (soporte) | 1 | — | — |
-| **Total** | **18** | **13** | **5** | **0** |
+| **Total** | **18** | **14** | **4** | **0** |
 
-**Progreso real:** 13 de 18 US plenamente conectadas al backend (**72%**).  
+**Progreso real:** 14 de 18 US plenamente conectadas al backend (**78%**).  
 **Progreso incluyendo parciales:** 18 de 18 US tienen al menos conexión parcial (**100%**).
 
 ---
@@ -274,18 +274,34 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 
 ---
 
-### ⚠️ US30: Ver detalle de una reserva
+### ✅ US30: Ver detalle de una reserva
 
-- **Estado:** PARCIALMENTE CONECTADA
+- **Estado:** CULMINADA
+- **Endpoint:** `GET /api/v1/reservations/{id}`
 - **Evidencia:**
-  - No existe una pantalla dedicada de detalle de reserva (`BookingDetailScreen`).
-  - Sin embargo, los detalles de cada reserva son visibles en las tarjetas de `BookingsScreen`:
-    - `NextBookingCard` (líneas 248-341): información destacada con vehículo, fechas, monto, código de reserva, ubicación, estado.
-    - `PreviousBookingItem` (líneas 344-398): información compacta con vehículo, fechas, monto, estado.
-  - Los datos mostrados provienen del backend: `Booking` + `Vehicle` reales.
-  - **Qué falta para considerar completa:**
-    - Una pantalla `BookingDetailScreen` dedicada que muestre TODOS los campos de la reserva (fotos de recogida/entrega, reporte de daños, fechas de confirmación, etc.).
-    - Un endpoint `GET /api/v1/reservations/{id}` para obtener el detalle completo de una sola reserva (actualmente solo existe el listado paginado).
+  - `BookingApi.kt:16` — `@GET("api/v1/reservations/{id}")` → `getReservationById()`
+  - `BookingRepositoryImpl.kt:18-20` — `getBookingById()` → `api.getReservationById(id).toDomain()`
+  - `BookingDetailViewModel.kt` — Carga el detalle de la reserva por ID y resuelve el vehículo asociado.
+  - `BookingDetailScreen.kt` — Pantalla dedicada que muestra TODOS los campos de la reserva:
+    - Código de reserva + badge de estado
+    - Vehículo (imagen, make/model, año, categoría, propietario)
+    - Fechas de recogida/devolución + cantidad de días
+    - Ubicaciones de recogida y devolución
+    - Cobertura seleccionada
+    - Confirmaciones de recogida/devolución (timestamps)
+    - Monto total pagado
+    - Fotos de recogida y devolución (si existen)
+    - Reporte de daños (si existe)
+  - Navegación: `BookingsScreen` → tap en tarjeta → `BookingDetailScreen(bookingId)`.
+  - `BookingDto` matchea 1:1 con la respuesta del backend (17 campos).
+  - Estados de UI: loading (spinner), error (mensaje + reintentar), datos (contenido scrolleable).
+- **Diagrama de flujo:**
+  ```
+  BookingsScreen → Tap en tarjeta → NavGraph → BookingDetailScreen(bookingId)
+    → BookingDetailViewModel.loadBookingDetail(bookingId)
+    → BookingRepository.getBookingById(id) → GET /api/v1/reservations/{id} → Backend
+    → VehicleRepository.getVehicleById(vehicleId) → GET /api/v1/vehicles/{id} → Backend
+  ```
 
 ---
 
@@ -438,13 +454,14 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 | `GET` | `/api/v1/vehicles/{id}` | US21, US24, US25 | ✅ |
 | `POST` | `/api/v1/reservations` | US24, US25, US26, US27, US28, US44 | ✅ |
 | `GET` | `/api/v1/reservations?renterId=&status=&page=&size=` | US29, US32 | ✅ |
+| `GET` | `/api/v1/reservations/{id}` | US30 | ✅ |
 | `POST` | `/api/v1/reservations/{id}/cancel` | US31 | ✅ |
 
 ---
 
 ## 📋 Conclusión
 
-### US plenamente conectadas al backend: 13 de 18 (72%)
+### US plenamente conectadas al backend: 14 de 18 (78%)
 
 | US | Nombre | Módulo |
 |---|---|---|
@@ -459,16 +476,16 @@ Este documento clasifica cada Historia de Usuario (US) del archivo [`user-storie
 | US27 | Visualizar cálculo total de reserva | Booking |
 | US28 | Confirmar y pagar reserva | Booking |
 | US29 | Ver mis reservas organizadas por estado | Booking |
+| US30 | Ver detalle de una reserva | Booking |
 | US31 | Cancelar reserva | Booking |
 | US32 | Ver historial de reservas pasadas | Booking |
 
-### US parcialmente conectadas: 5
+### US parcialmente conectadas: 4
 
 | US | Nombre | Qué falta |
 |---|---|---|
 | US07 | Consultar estado de verificación | Endpoint `GET /api/v1/auth/kyc/status` o UI dedicada usando campos del login |
 | US26 | Seleccionar cobertura de reserva | Endpoint `GET /api/v1/coverage-plans` para obtener coberturas dinámicas del backend |
-| US30 | Ver detalle de una reserva | Pantalla `BookingDetailScreen` + endpoint `GET /api/v1/reservations/{id}` |
 | US44 | Registrar pago de reserva | Endpoint dedicado `POST /api/v1/payments` + integración con pasarela de pago |
 | US45 | Ver resumen de pago | Pantalla/endpoint dedicado de resumen de pago post-reserva |
 
