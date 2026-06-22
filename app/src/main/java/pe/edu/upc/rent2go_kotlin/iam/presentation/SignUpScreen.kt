@@ -82,22 +82,83 @@ fun SignUpScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        InputField(label = "Nombre completo", value = viewModel.registerFullName, onValueChange = { viewModel.registerFullName = it })
+        InputField(
+            label = "Nombre completo",
+            value = viewModel.registerFullName,
+            onValueChange = { viewModel.registerFullName = it }
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        InputField(label = "Correo electrónico", value = viewModel.registerEmail, onValueChange = { viewModel.registerEmail = it })
+        InputField(
+            label = "Correo electrónico",
+            value = viewModel.registerEmail,
+            onValueChange = { viewModel.registerEmail = it.lowercase().trim() }
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        InputField(label = "Teléfono", value = viewModel.registerPhone, onValueChange = { viewModel.registerPhone = it })
+        InputField(
+            label = "Teléfono",
+            value = viewModel.registerPhone,
+            onValueChange = { text ->
+                val digits = text.filter { it.isDigit() }
+                if (digits.length <= 9) {
+                    viewModel.registerPhone = digits
+                }
+            }
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        InputField(label = "Contraseña", value = viewModel.registerPassword, onValueChange = { viewModel.registerPassword = it }, isPassword = true)
+        InputField(
+            label = "Contraseña",
+            value = viewModel.registerPassword,
+            onValueChange = { viewModel.registerPassword = it },
+            isPassword = true
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        InputField(
+            label = "Confirmar contraseña",
+            value = viewModel.registerConfirmPassword,
+            onValueChange = { viewModel.registerConfirmPassword = it },
+            isPassword = true
+        )
         
+        if (viewModel.errorMessage != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = viewModel.errorMessage ?: "",
+                color = Color.Red,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
             onClick = {
-                if (viewModel.registerFullName.isNotBlank() && viewModel.registerEmail.isNotBlank() &&
-                    viewModel.registerPhone.isNotBlank() && viewModel.registerPassword.isNotBlank()) {
-                    onContinueClick()
+                viewModel.clearError()
+                val fullName = viewModel.registerFullName.trim()
+                val email = viewModel.registerEmail.trim()
+                val phone = viewModel.registerPhone.trim()
+                val password = viewModel.registerPassword
+                val confirmPassword = viewModel.registerConfirmPassword
+
+                if (fullName.isBlank() || email.isBlank() || phone.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                    viewModel.errorMessage = "Por favor, complete todos los campos de registro."
+                    return@Button
                 }
+                if (phone.length != 9) {
+                    viewModel.errorMessage = "El teléfono debe tener exactamente 9 dígitos."
+                    return@Button
+                }
+                if (!email.contains("@") || !email.contains(".")) {
+                    viewModel.errorMessage = "Por favor, ingrese un correo válido."
+                    return@Button
+                }
+                if (password != confirmPassword) {
+                    viewModel.errorMessage = "Las contraseñas no coinciden."
+                    return@Button
+                }
+
+                viewModel.clearError()
+                onContinueClick()
             },
             modifier = Modifier
                 .fillMaxWidth()

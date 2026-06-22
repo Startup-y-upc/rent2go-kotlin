@@ -23,6 +23,7 @@ class AuthViewModel(
     var registerEmail by mutableStateOf("")
     var registerPhone by mutableStateOf("")
     var registerPassword by mutableStateOf("")
+    var registerConfirmPassword by mutableStateOf("")
     var registerUsername by mutableStateOf("")
     var selectedAccountType by mutableStateOf("RENTER") // OWNER or RENTER
 
@@ -81,6 +82,7 @@ class AuthViewModel(
         registerEmail = ""
         registerPhone = ""
         registerPassword = ""
+        registerConfirmPassword = ""
         registerUsername = ""
         kycDniNumber = ""
         kycDniFrontUrl = ""
