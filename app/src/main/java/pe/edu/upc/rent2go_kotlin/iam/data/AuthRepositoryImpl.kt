@@ -158,7 +158,7 @@ class AuthRepositoryImpl(
             val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
             val response = api.uploadImage(part)
             if (response.isSuccessful) {
-                return response.body()?.url ?: throw Exception("URL de imagen no recibida")
+                return response.body()?.imageUrl ?: throw Exception("URL de imagen no recibida")
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error al subir la imagen"
                 throw Exception(errorMsg)
