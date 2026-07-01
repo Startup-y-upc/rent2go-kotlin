@@ -298,7 +298,7 @@ fun CarDetailScreen(
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
                                 DetailRow("Año", vehicle.year.toString())
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
-                                DetailRow("Disponibilidad", if (state.occupiedUntil != null) "Ocupado hasta ${state.occupiedUntil}" else "Libre")
+                                DetailRow("Disponibilidad", if (state.occupiedUntil != null) "Hasta ${state.occupiedUntil}" else "Libre")
                             }
                         }
 
@@ -374,11 +374,23 @@ fun SpecItem(
 @Composable
 fun DetailRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
-        Text(text = label, fontSize = 14.sp, color = Color.Gray)
-        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Gray,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black,
+            modifier = Modifier.weight(1.8f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
     }
 }
