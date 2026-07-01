@@ -96,6 +96,6 @@ data class PasswordResetConfirm(
 @Serializable
 data class ImageUploadResponse(
     val imageUrl: String,
-    val imagePath: String = ""
+    val imagePath: String? = null
 )
 

@@ -28,6 +28,6 @@ interface AuthApi {
     suspend fun confirmPasswordReset(@Body request: PasswordResetConfirm): Response<Unit>
 
     @Multipart
-    @POST("api/v1/uploads/images")
+    @POST("api/uploads/images")
     suspend fun uploadImage(@Part image: MultipartBody.Part): Response<ImageUploadResponse>
 }

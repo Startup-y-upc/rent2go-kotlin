@@ -208,7 +208,7 @@ fun ProfileScreen(
                     VerificationItem(
                         label = "Identidad y documentos (KYC)",
                         isVerified = kycSubmitted,
-                        onVerifyClick = if (!kycSubmitted) onKycClick else null
+                        onVerifyClick = onKycClick
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     VerificationItem("Email verificado", emailOk)
