@@ -173,8 +173,11 @@ fun ProfileScreen(
                 color = Color.White.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(16.dp)
             ) {
+                val hasLocalKyc = !authViewModel.kycDniFrontUrl.isNullOrBlank() &&
+                        !authViewModel.kycDniBackUrl.isNullOrBlank() &&
+                        !authViewModel.kycLicenseUrl.isNullOrBlank()
                 val kycSubmitted = user?.status == "ACTIVE" || user?.status == "VERIFIED" ||
-                        authViewModel.isKycSuccess
+                        authViewModel.isKycSuccess || hasLocalKyc
                 val emailOk = user?.emailVerified == true
                 val phoneOk = user?.phoneVerified == true
                 val profileUploaded = !user?.profileImageUrl.isNullOrBlank()
@@ -208,7 +211,7 @@ fun ProfileScreen(
                     VerificationItem(
                         label = "Identidad y documentos (KYC)",
                         isVerified = kycSubmitted,
-                        onVerifyClick = if (!kycSubmitted) onKycClick else null
+                        onVerifyClick = onKycClick
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     VerificationItem("Email verificado", emailOk)
@@ -282,28 +285,37 @@ fun StatItem(value: String, label: String) {
 
 @Composable
 fun VerificationItem(label: String, isVerified: Boolean, onVerifyClick: (() -> Unit)? = null) {
+    val isClickable = onVerifyClick != null
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = if (isVerified) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                contentDescription = null,
-                tint = if (isVerified) PrimaryCyan else Color.Black,
-                modifier = Modifier.size(24.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isClickable) Modifier.clickable { onVerifyClick?.invoke() }
+                else Modifier
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = label, fontSize = 14.sp, color = Color.Black)
-        }
-        if (!isVerified && onVerifyClick != null) {
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isVerified) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+            contentDescription = null,
+            tint = if (isVerified) PrimaryCyan else Color.Black,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Black,
+            modifier = Modifier.weight(1f)
+        )
+        if (isClickable) {
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Verificar",
+                text = if (isVerified) "Modificar" else "Verificar",
                 fontSize = 12.sp,
                 color = PrimaryCyan,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onVerifyClick() }
+                fontWeight = FontWeight.Bold
             )
         }
     }

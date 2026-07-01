@@ -156,6 +156,10 @@ fun SignUpScreen(
                     viewModel.errorMessage = "Las contraseñas no coinciden."
                     return@Button
                 }
+                if (password.length < 6) {
+                    viewModel.errorMessage = "La contraseña debe tener al menos 6 caracteres."
+                    return@Button
+                }
 
                 viewModel.clearError()
                 onContinueClick()

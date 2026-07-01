@@ -30,6 +30,18 @@ fun SetupNavGraph(navController: NavHostController) {
         if (authViewModel.currentUser != null || hasSession) "car_list" else "login"
     }
 
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        pe.edu.upc.rent2go_kotlin.common.SessionEventBus.events.collect { event ->
+            if (event == pe.edu.upc.rent2go_kotlin.common.SessionEvent.SESSION_EXPIRED) {
+                authViewModel.logout {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination

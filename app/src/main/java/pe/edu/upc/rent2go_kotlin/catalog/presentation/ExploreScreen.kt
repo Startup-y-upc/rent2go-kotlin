@@ -148,7 +148,8 @@ fun ExploreScreen(
                     val totalItems = gridState.layoutInfo.totalItemsCount
                     lastVisible to totalItems
                 }.collect { (lastVisible, totalItems) ->
-                    if (lastVisible >= totalItems - 4
+                    if (totalItems > 0
+                        && lastVisible >= totalItems - 4
                         && state.hasMorePages
                         && !state.isLoadingMore
                         && !state.isLoading
