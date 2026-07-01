@@ -318,30 +318,55 @@ fun UploadCard(
                 Button(
                     onClick = onUploadClick,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.15f),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.White.copy(alpha = 0.05f),
+                        disabledContentColor = Color.White.copy(alpha = 0.3f)
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     enabled = !isUploading
                 ) {
-                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector = Icons.Default.CloudUpload,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isUploading) Color.White.copy(alpha = 0.3f) else Color.White
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (isUploaded) "Volver a subir" else "Subir foto",
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        color = if (isUploading) Color.White.copy(alpha = 0.3f) else Color.White
                     )
                 }
 
                 Button(
                     onClick = onDeleteClick,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.15f),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.White.copy(alpha = 0.05f),
+                        disabledContentColor = Color.White.copy(alpha = 0.3f)
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     enabled = isUploaded && !isUploading
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isUploaded && !isUploading) Color.White else Color.White.copy(alpha = 0.3f)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Borrar", fontSize = 12.sp)
+                    Text(
+                        text = "Borrar",
+                        fontSize = 12.sp,
+                        color = if (isUploaded && !isUploading) Color.White else Color.White.copy(alpha = 0.3f)
+                    )
                 }
             }
         }

@@ -9,5 +9,5 @@ data class VehicleListState(
     val error: String = "",
     val currentPage: Int = 0,
     val totalPages: Int = 1,
-    val hasMorePages: Boolean = true
+    val hasMorePages: Boolean = false
 )

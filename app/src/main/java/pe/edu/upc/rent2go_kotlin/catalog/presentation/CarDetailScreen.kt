@@ -297,7 +297,7 @@ fun CarDetailScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(100.dp)) // Padding for bottom bar
+                        Spacer(modifier = Modifier.height(160.dp)) // Padding for bottom bar
                     }
                 }
 
