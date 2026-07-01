@@ -195,4 +195,37 @@ class AuthRepositoryImpl(
             throw Exception(e.message ?: "Error al restablecer la contraseña")
         }
     }
+
+    override suspend fun updateProfile(fullName: String?, phone: String?): User {
+        try {
+            val textMediaType = "text/plain".toMediaTypeOrNull()
+            val fullNameBody = fullName?.takeIf { it.isNotBlank() }?.toRequestBody(textMediaType)
+            val phoneBody = phone?.takeIf { it.isNotBlank() }?.toRequestBody(textMediaType)
+
+            val response = api.updateProfile(fullNameBody, phoneBody, null)
+            if (response.isSuccessful) {
+                val body = response.body() ?: throw Exception("Respuesta del servidor vacía")
+                val user = User(
+                    id = body.id,
+                    fullName = body.fullName,
+                    email = body.email,
+                    phone = body.phone,
+                    role = body.accountType,
+                    username = body.username,
+                    profileImageUrl = body.profileImageUrl,
+                    status = body.status,
+                    emailVerified = body.emailVerified,
+                    phoneVerified = body.phoneVerified,
+                    twoFactorEnabled = body.twoFactorEnabled
+                )
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(user)
+                return user
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error al actualizar el perfil"
+                throw Exception(errorMsg)
+            }
+        } catch (e: Exception) {
+            throw Exception(e.message ?: "Error desconocido al actualizar el perfil")
+        }
+    }
 }

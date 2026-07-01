@@ -171,6 +171,7 @@ fun BookingConfirmationScreen(
                                                 if (viewModel.endDate.isBefore(date)) {
                                                     viewModel.endDate = date.plusDays(1)
                                                 }
+                                                viewModel.checkAvailability()
                                             }
                                         }
                                 ) {
@@ -187,6 +188,7 @@ fun BookingConfirmationScreen(
                                                 if (date.isAfter(viewModel.startDate) || date.isEqual(viewModel.startDate)) {
                                                     viewModel.endDate = date
                                                 }
+                                                viewModel.checkAvailability()
                                             }
                                         }
                                 ) {
@@ -196,6 +198,51 @@ fun BookingConfirmationScreen(
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.Black.copy(alpha = 0.1f))
 
                                 RentalInfoItem(Icons.Default.LocationOn, "Punto de encuentro", vehicle.location)
+                            }
+                        }
+
+                        // US15 (Renter, read-only) — availability feedback for the selected range.
+                        Spacer(modifier = Modifier.height(12.dp))
+                        when {
+                            viewModel.isCheckingAvailability -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PrimaryCyan)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Verificando disponibilidad…", fontSize = 12.sp, color = Color.Gray)
+                                }
+                            }
+                            !viewModel.isRangeAvailable -> {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color(0xFFFFF3E0),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFE65100), modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                "El vehículo ya está reservado en parte de este rango de fechas.",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFFE65100),
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                        if (viewModel.blockedRanges.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            viewModel.blockedRanges.forEach { (start, end) ->
+                                                Text("Ocupado: $start a $end", fontSize = 11.sp, color = Color(0xFFE65100))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            viewModel.availabilityError != null -> {
+                                Text(
+                                    "No se pudo verificar la disponibilidad. Puedes continuar, se validará al confirmar.",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
                             }
                         }
 
@@ -271,13 +318,15 @@ fun BookingConfirmationScreen(
                                     showSuccessDialog = true
                                 }
                             },
-                            enabled = !viewModel.isSubmitting,
+                            enabled = !viewModel.isSubmitting && viewModel.isRangeAvailable,
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (viewModel.isSubmitting) {
                                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            } else if (!viewModel.isRangeAvailable) {
+                                Text("Fechas no disponibles", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             } else {
                                 Text("Pagar y reservar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }

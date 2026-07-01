@@ -37,7 +37,8 @@ fun ProfileScreen(
     authViewModel: AuthViewModel,
     profileViewModel: ProfileViewModel = viewModel(),
     onLogoutClick: () -> Unit,
-    onKycClick: () -> Unit
+    onKycClick: () -> Unit,
+    onTermsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val user = authViewModel.currentUser
@@ -134,7 +135,7 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = user?.fullName ?: "Usuario de Prueba",
                             fontSize = 24.sp,
@@ -146,6 +147,19 @@ fun ProfileScreen(
                             fontSize = 14.sp,
                             color = TextGray
                         )
+                        Text(
+                            text = when (user?.role) {
+                                "OWNER" -> "Propietario"
+                                "RENTER" -> "Arrendatario"
+                                else -> "Tipo de cuenta pendiente de selección"
+                            },
+                            fontSize = 12.sp,
+                            color = TextGray
+                        )
+                    }
+                    // US09 — edit own profile (name/phone)
+                    IconButton(onClick = { authViewModel.startEditingProfile() }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar perfil", tint = Color.White)
                     }
                 }
 
@@ -173,8 +187,11 @@ fun ProfileScreen(
                 color = Color.White.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(16.dp)
             ) {
+                val hasLocalKyc = !authViewModel.kycDniFrontUrl.isNullOrBlank() &&
+                        !authViewModel.kycDniBackUrl.isNullOrBlank() &&
+                        !authViewModel.kycLicenseUrl.isNullOrBlank()
                 val kycSubmitted = user?.status == "ACTIVE" || user?.status == "VERIFIED" ||
-                        authViewModel.isKycSuccess
+                        authViewModel.isKycSuccess || hasLocalKyc
                 val emailOk = user?.emailVerified == true
                 val phoneOk = user?.phoneVerified == true
                 val profileUploaded = !user?.profileImageUrl.isNullOrBlank()
@@ -208,7 +225,7 @@ fun ProfileScreen(
                     VerificationItem(
                         label = "Identidad y documentos (KYC)",
                         isVerified = kycSubmitted,
-                        onVerifyClick = if (!kycSubmitted) onKycClick else null
+                        onVerifyClick = onKycClick
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     VerificationItem("Email verificado", emailOk)
@@ -226,15 +243,34 @@ fun ProfileScreen(
             }
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Placeholder for lower section
+
+            // Términos y Condiciones — entry point for TS15/US57, reads the
+            // bundled asset (assets/legal/terms-and-conditions.md) via TermsScreen.
             Surface(
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-                color = Color.White.copy(alpha = 0.4f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onTermsClick() },
+                color = Color.White.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("Configuración de la cuenta", color = Color.Black.copy(alpha = 0.5f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Description,
+                        contentDescription = null,
+                        tint = Color.Black.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Términos y Condiciones",
+                        color = Color.Black.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
                 }
             }
 
@@ -270,6 +306,60 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(140.dp))
         }
     }
+
+    // US09 — Editar perfil propio (nombre, teléfono)
+    if (authViewModel.isEditingProfile) {
+        AlertDialog(
+            onDismissRequest = { authViewModel.cancelEditingProfile() },
+            containerColor = Color.White,
+            title = { Text("Editar perfil", fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = authViewModel.editFullName,
+                        onValueChange = { authViewModel.editFullName = it },
+                        label = { Text("Nombre completo") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = authViewModel.editPhone,
+                        onValueChange = { authViewModel.editPhone = it },
+                        label = { Text("Teléfono") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (authViewModel.profileUpdateError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = authViewModel.profileUpdateError ?: "",
+                            color = Color.Red,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { authViewModel.saveProfile {} },
+                    enabled = !authViewModel.isSavingProfile,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan)
+                ) {
+                    if (authViewModel.isSavingProfile) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    } else {
+                        Text("Guardar", color = Color.White)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { authViewModel.cancelEditingProfile() }) {
+                    Text("Cancelar", color = Color.Black)
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -282,28 +372,37 @@ fun StatItem(value: String, label: String) {
 
 @Composable
 fun VerificationItem(label: String, isVerified: Boolean, onVerifyClick: (() -> Unit)? = null) {
+    val isClickable = onVerifyClick != null
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = if (isVerified) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-                contentDescription = null,
-                tint = if (isVerified) PrimaryCyan else Color.Black,
-                modifier = Modifier.size(24.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isClickable) Modifier.clickable { onVerifyClick?.invoke() }
+                else Modifier
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(text = label, fontSize = 14.sp, color = Color.Black)
-        }
-        if (!isVerified && onVerifyClick != null) {
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isVerified) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+            contentDescription = null,
+            tint = if (isVerified) PrimaryCyan else Color.Black,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.Black,
+            modifier = Modifier.weight(1f)
+        )
+        if (isClickable) {
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Verificar",
+                text = if (isVerified) "Modificar" else "Verificar",
                 fontSize = 12.sp,
                 color = PrimaryCyan,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onVerifyClick() }
+                fontWeight = FontWeight.Bold
             )
         }
     }

@@ -27,18 +27,26 @@ object DependencyProvider {
     }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .addInterceptor(loggingInterceptor)
         .addInterceptor { chain ->
             val originalRequest = chain.request()
             val token = SessionManager.getToken()
-            if (token != null) {
-                val newRequest = originalRequest.newBuilder()
+            val request = if (token != null) {
+                originalRequest.newBuilder()
                     .header("Authorization", "Bearer $token")
                     .build()
-                chain.proceed(newRequest)
             } else {
-                chain.proceed(originalRequest)
+                originalRequest
             }
+            val response = chain.proceed(request)
+            if (response.code == 401 && !request.url.encodedPath.endsWith("/auth/login")) {
+                SessionManager.clearSession()
+                SessionEventBus.emit(SessionEvent.SESSION_EXPIRED)
+            }
+            response
         }
         .build()
 

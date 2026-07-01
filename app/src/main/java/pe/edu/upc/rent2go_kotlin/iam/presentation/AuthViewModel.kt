@@ -45,7 +45,19 @@ class AuthViewModel(
     var isAuthSuccess by mutableStateOf(false)
     var isKycSuccess by mutableStateOf(false)
 
+    // US09 — Edit profile form state
+    var isEditingProfile by mutableStateOf(false)
+    var isSavingProfile by mutableStateOf(false)
+    var editFullName by mutableStateOf("")
+    var editPhone by mutableStateOf("")
+    var profileUpdateError by mutableStateOf<String?>(null)
+
     init {
+        // Load stored KYC URLs if any
+        kycDniFrontUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycDniFront()
+        kycDniBackUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycDniBack()
+        kycLicenseUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycLicense()
+
         // Si hay un token guardado, obtener los datos frescos del usuario desde /api/v1/auth/me
         if (pe.edu.upc.rent2go_kotlin.common.SessionManager.getToken() != null) {
             viewModelScope.launch {
@@ -89,6 +101,7 @@ class AuthViewModel(
         kycDniBackUrl = ""
         kycLicenseUrl = ""
         isKycSuccess = false
+        pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls("", "", "")
         clearError()
     }
 
@@ -162,6 +175,55 @@ class AuthViewModel(
         pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(updatedUser)
     }
 
+
+    /** US09 — opens the edit form pre-filled with the current profile values. */
+    fun startEditingProfile() {
+        editFullName = currentUser?.fullName ?: ""
+        editPhone = currentUser?.phone ?: ""
+        profileUpdateError = null
+        isEditingProfile = true
+    }
+
+    fun cancelEditingProfile() {
+        isEditingProfile = false
+        profileUpdateError = null
+    }
+
+    /**
+     * US09 AC2 — rejects an invalid phone (non-numeric characters) before
+     * calling the backend, matching the Gherkin AC verbatim.
+     */
+    fun saveProfile(onSuccess: () -> Unit) {
+        val trimmedName = editFullName.trim()
+        val trimmedPhone = editPhone.trim()
+
+        if (trimmedName.isBlank()) {
+            profileUpdateError = "El nombre no puede estar vacío."
+            return
+        }
+        if (trimmedPhone.isNotBlank() && !trimmedPhone.all { it.isDigit() }) {
+            profileUpdateError = "El teléfono solo puede contener números."
+            return
+        }
+
+        viewModelScope.launch {
+            isSavingProfile = true
+            profileUpdateError = null
+            try {
+                val updatedUser = repository.updateProfile(
+                    fullName = trimmedName,
+                    phone = trimmedPhone.ifBlank { null }
+                )
+                currentUser = updatedUser
+                isEditingProfile = false
+                onSuccess()
+            } catch (e: Exception) {
+                profileUpdateError = e.message ?: "Error al actualizar el perfil"
+            } finally {
+                isSavingProfile = false
+            }
+        }
+    }
 
     fun uploadImage(imageBytes: ByteArray, fileName: String, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
@@ -248,6 +310,11 @@ class AuthViewModel(
 
         if (passwordResetNewPassword != passwordResetConfirmPassword) {
             errorMessage = "Las contraseñas no coinciden."
+            return
+        }
+
+        if (passwordResetNewPassword.length < 6) {
+            errorMessage = "La contraseña debe tener al menos 6 caracteres."
             return
         }
 

@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.SurfaceBlue
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun ValidationScreen(
@@ -62,6 +64,11 @@ fun ValidationScreen(
             uploadingCard = "dniFront"
             viewModel.uploadImage(bytes, getFileName(uri)) { url ->
                 viewModel.kycDniFrontUrl = url
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls(
+                    dniFront = url,
+                    dniBack = viewModel.kycDniBackUrl,
+                    license = viewModel.kycLicenseUrl
+                )
                 uploadingCard = null
             }
         }
@@ -73,6 +80,11 @@ fun ValidationScreen(
             uploadingCard = "dniBack"
             viewModel.uploadImage(bytes, getFileName(uri)) { url ->
                 viewModel.kycDniBackUrl = url
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls(
+                    dniFront = viewModel.kycDniFrontUrl,
+                    dniBack = url,
+                    license = viewModel.kycLicenseUrl
+                )
                 uploadingCard = null
             }
         }
@@ -84,6 +96,11 @@ fun ValidationScreen(
             uploadingCard = "license"
             viewModel.uploadImage(bytes, getFileName(uri)) { url ->
                 viewModel.kycLicenseUrl = url
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls(
+                    dniFront = viewModel.kycDniFrontUrl,
+                    dniBack = viewModel.kycDniBackUrl,
+                    license = url
+                )
                 uploadingCard = null
             }
         }
@@ -129,11 +146,17 @@ fun ValidationScreen(
             title = "DNI - Anverso (Frente)",
             subtitle = "Foto clara del frente de tu DNI",
             isUploaded = viewModel.kycDniFrontUrl.isNotBlank(),
+            imageUrl = viewModel.kycDniFrontUrl,
             isUploading = uploadingCard == "dniFront",
             onUploadClick = { dniFrontPicker.launch("image/*") },
             onDeleteClick = {
                 viewModel.kycDniFrontUrl = ""
                 viewModel.isUploadingDniFront = false
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls(
+                    dniFront = "",
+                    dniBack = viewModel.kycDniBackUrl,
+                    license = viewModel.kycLicenseUrl
+                )
             }
         )
 
@@ -144,11 +167,17 @@ fun ValidationScreen(
             title = "DNI - Reverso (Atrás)",
             subtitle = "Foto clara del reverso de tu DNI",
             isUploaded = viewModel.kycDniBackUrl.isNotBlank(),
+            imageUrl = viewModel.kycDniBackUrl,
             isUploading = uploadingCard == "dniBack",
             onUploadClick = { dniBackPicker.launch("image/*") },
             onDeleteClick = {
                 viewModel.kycDniBackUrl = ""
                 viewModel.isUploadingDniBack = false
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls(
+                    dniFront = viewModel.kycDniFrontUrl,
+                    dniBack = "",
+                    license = viewModel.kycLicenseUrl
+                )
             }
         )
 
@@ -159,11 +188,17 @@ fun ValidationScreen(
             title = "Licencia de conducir",
             subtitle = "Vigente, en color y completa",
             isUploaded = viewModel.kycLicenseUrl.isNotBlank(),
+            imageUrl = viewModel.kycLicenseUrl,
             isUploading = uploadingCard == "license",
             onUploadClick = { licensePicker.launch("image/*") },
             onDeleteClick = {
                 viewModel.kycLicenseUrl = ""
                 viewModel.isUploadingLicense = false
+                pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls(
+                    dniFront = viewModel.kycDniFrontUrl,
+                    dniBack = viewModel.kycDniBackUrl,
+                    license = ""
+                )
             }
         )
 
@@ -236,6 +271,7 @@ fun UploadCard(
     title: String,
     subtitle: String? = null,
     isUploaded: Boolean,
+    imageUrl: String = "",
     isUploading: Boolean = false,
     onUploadClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -253,16 +289,25 @@ fun UploadCard(
             ) {
                 Surface(
                     modifier = Modifier.size(80.dp),
-                    color = if (isUploaded) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f),
+                    color = if (isUploaded) Color.Transparent else Color.White.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Image,
-                            contentDescription = null,
-                            tint = if (isUploaded) Color(0xFF4CAF50) else Color.White,
-                            modifier = Modifier.size(40.dp)
-                        )
+                        if (isUploaded && imageUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
                     }
                 }
 
@@ -318,30 +363,55 @@ fun UploadCard(
                 Button(
                     onClick = onUploadClick,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.15f),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.White.copy(alpha = 0.05f),
+                        disabledContentColor = Color.White.copy(alpha = 0.3f)
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     enabled = !isUploading
                 ) {
-                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector = Icons.Default.CloudUpload,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isUploading) Color.White.copy(alpha = 0.3f) else Color.White
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (isUploaded) "Volver a subir" else "Subir foto",
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        color = if (isUploading) Color.White.copy(alpha = 0.3f) else Color.White
                     )
                 }
 
                 Button(
                     onClick = onDeleteClick,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.15f),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.White.copy(alpha = 0.05f),
+                        disabledContentColor = Color.White.copy(alpha = 0.3f)
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     enabled = isUploaded && !isUploading
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isUploaded && !isUploading) Color.White else Color.White.copy(alpha = 0.3f)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Borrar", fontSize = 12.sp)
+                    Text(
+                        text = "Borrar",
+                        fontSize = 12.sp,
+                        color = if (isUploaded && !isUploading) Color.White else Color.White.copy(alpha = 0.3f)
+                    )
                 }
             }
         }

@@ -27,7 +27,8 @@ fun MainDashboard(
     onChatClick: (String) -> Unit,
     onLogoutClick: () -> Unit,
     onBookingClick: (Int) -> Unit = {},
-    onKycClick: () -> Unit = {}
+    onKycClick: () -> Unit = {},
+    onTermsClick: () -> Unit = {}
 ) {
     var selectedScreen by remember { mutableStateOf("Explorar") }
 
@@ -40,7 +41,8 @@ fun MainDashboard(
             "Perfil" -> ProfileScreen(
                 authViewModel = authViewModel,
                 onLogoutClick = onLogoutClick,
-                onKycClick = onKycClick
+                onKycClick = onKycClick,
+                onTermsClick = onTermsClick
             )
         }
 

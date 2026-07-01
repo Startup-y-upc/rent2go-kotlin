@@ -8,7 +8,12 @@ interface Rent2GoApi {
     @GET("api/v1/vehicles")
     suspend fun getVehicles(
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20
+        @Query("size") size: Int = 20,
+        @Query("minPrice") minPrice: Double? = null,
+        @Query("maxPrice") maxPrice: Double? = null,
+        @Query("seats") seats: Int? = null,
+        @Query("transmission") transmission: String? = null,
+        @Query("fuelType") fuelType: String? = null
     ): VehicleResponse
 
     @GET("api/v1/vehicles/{id}")

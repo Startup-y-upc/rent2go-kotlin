@@ -19,6 +19,7 @@ import pe.edu.upc.rent2go_kotlin.catalog.presentation.CarDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.ChatDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingConfirmationScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingDetailScreen
+import pe.edu.upc.rent2go_kotlin.community.presentation.TermsScreen
 
 @Composable
 fun SetupNavGraph(navController: NavHostController) {
@@ -28,6 +29,18 @@ fun SetupNavGraph(navController: NavHostController) {
     val startDestination = remember {
         val hasSession = pe.edu.upc.rent2go_kotlin.common.SessionManager.isUserLoggedIn()
         if (authViewModel.currentUser != null || hasSession) "car_list" else "login"
+    }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        pe.edu.upc.rent2go_kotlin.common.SessionEventBus.events.collect { event ->
+            if (event == pe.edu.upc.rent2go_kotlin.common.SessionEvent.SESSION_EXPIRED) {
+                authViewModel.logout {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+        }
     }
 
     NavHost(
@@ -121,6 +134,16 @@ fun SetupNavGraph(navController: NavHostController) {
                 },
                 onKycClick = {
                     navController.navigate("sign_up_validation?fromProfile=true")
+                },
+                onTermsClick = {
+                    navController.navigate("terms")
+                }
+            )
+        }
+        composable(route = "terms") {
+            TermsScreen(
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }

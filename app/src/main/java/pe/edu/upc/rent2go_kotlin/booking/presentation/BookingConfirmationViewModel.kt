@@ -41,6 +41,18 @@ class BookingConfirmationViewModel(
     var isSuccess by mutableStateOf(false)
         private set
 
+    // US15 (Renter, read-only) — availability of the selected date range.
+    // Populated by checkAvailability(); does not let the renter create/modify
+    // blocks, only warns them before submitting a reservation request.
+    var isCheckingAvailability by mutableStateOf(false)
+        private set
+    var isRangeAvailable by mutableStateOf(true)
+        private set
+    var blockedRanges by mutableStateOf<List<Pair<String, String>>>(emptyList())
+        private set
+    var availabilityError by mutableStateOf<String?>(null)
+        private set
+
     // Price Calculations
     val rentalDays: Long
         get() = ChronoUnit.DAYS.between(startDate, endDate).coerceAtLeast(1)
@@ -74,10 +86,39 @@ class BookingConfirmationViewModel(
             errorVehicle = null
             try {
                 vehicle = vehicleRepository.getVehicleById(vehicleId)
+                checkAvailability()
             } catch (e: Exception) {
                 errorVehicle = e.message ?: "Error al obtener detalles del vehículo"
             } finally {
                 isLoadingVehicle = false
+            }
+        }
+    }
+
+    /**
+     * US15 (Renter, read-only) — re-checks availability whenever the renter
+     * changes pickup/return dates, so they see occupied dates before paying.
+     * Call this after mutating [startDate]/[endDate] from the UI.
+     */
+    fun checkAvailability() {
+        val currentVehicle = vehicle ?: return
+        viewModelScope.launch {
+            isCheckingAvailability = true
+            availabilityError = null
+            try {
+                val response = bookingRepository.checkAvailability(
+                    vehicleId = currentVehicle.id,
+                    startDate = startDate.toString(),
+                    endDate = endDate.toString()
+                )
+                isRangeAvailable = response.isAvailable
+                blockedRanges = response.blockedRanges.map { it.startDate to it.endDate }
+            } catch (e: Exception) {
+                // Non-fatal: if the availability check fails (network, etc.),
+                // do not block the reservation flow — only surface a soft warning.
+                availabilityError = e.message ?: "No se pudo verificar la disponibilidad"
+            } finally {
+                isCheckingAvailability = false
             }
         }
     }
@@ -87,6 +128,10 @@ class BookingConfirmationViewModel(
         val renterId = SessionManager.getUserId()
         if (renterId == -1) {
             errorMessage = "Usuario no autenticado"
+            return
+        }
+        if (!isRangeAvailable) {
+            errorMessage = "El vehículo no está disponible en las fechas seleccionadas."
             return
         }
 

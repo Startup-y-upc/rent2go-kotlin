@@ -76,3 +76,17 @@ data class CancelBookingRequest(
     val reason: String
 )
 
+// US15 (Renter, read-only) — mirrors AvailabilityController#checkAvailability response shape.
+@Serializable
+data class AvailabilityCheckResponse(
+    val vehicleId: Int,
+    val isAvailable: Boolean,
+    val blockedRanges: List<BlockedRangeDto> = emptyList()
+)
+
+@Serializable
+data class BlockedRangeDto(
+    val startDate: String,
+    val endDate: String
+)
+
