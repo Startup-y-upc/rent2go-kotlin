@@ -35,7 +35,10 @@ fun CarDetailScreen(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return VehicleDetailViewModel(DependencyProvider.vehicleRepository) as T
+                return VehicleDetailViewModel(
+                    DependencyProvider.vehicleRepository,
+                    DependencyProvider.bookingRepository
+                ) as T
             }
         }
     )
@@ -291,9 +294,11 @@ fun CarDetailScreen(
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
                                 DetailRow("VIN", vehicle.vin)
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
-                                DetailRow("Estado", vehicle.status)
+                                DetailRow("Estado", if (state.occupiedUntil != null) "OCUPADO" else vehicle.status)
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
                                 DetailRow("Año", vehicle.year.toString())
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
+                                DetailRow("Disponibilidad", if (state.occupiedUntil != null) "Ocupado hasta ${state.occupiedUntil}" else "Libre")
                             }
                         }
 
@@ -331,12 +336,16 @@ fun CarDetailScreen(
                         }
                         Button(
                             onClick = { onReserveClick(carId) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (state.occupiedUntil != null) Color.Gray else Color.Black,
+                                contentColor = Color.White
+                            ),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.height(56.dp).width(180.dp)
+                            modifier = Modifier.height(56.dp).width(180.dp),
+                            enabled = state.occupiedUntil == null
                         ) {
                             Text(
-                                text = "Reservar",
+                                text = if (state.occupiedUntil != null) "Reservado" else "Reservar",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
