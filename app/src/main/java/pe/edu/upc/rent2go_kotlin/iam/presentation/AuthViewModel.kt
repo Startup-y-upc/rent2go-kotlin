@@ -46,6 +46,11 @@ class AuthViewModel(
     var isKycSuccess by mutableStateOf(false)
 
     init {
+        // Load stored KYC URLs if any
+        kycDniFrontUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycDniFront()
+        kycDniBackUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycDniBack()
+        kycLicenseUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycLicense()
+
         // Si hay un token guardado, obtener los datos frescos del usuario desde /api/v1/auth/me
         if (pe.edu.upc.rent2go_kotlin.common.SessionManager.getToken() != null) {
             viewModelScope.launch {
@@ -89,6 +94,7 @@ class AuthViewModel(
         kycDniBackUrl = ""
         kycLicenseUrl = ""
         isKycSuccess = false
+        pe.edu.upc.rent2go_kotlin.common.SessionManager.saveKycUrls("", "", "")
         clearError()
     }
 

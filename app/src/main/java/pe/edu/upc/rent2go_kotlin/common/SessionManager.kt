@@ -19,6 +19,9 @@ object SessionManager {
     private const val KEY_PHONE_VERIFIED = "user_phone_verified"
     private const val KEY_TWO_FACTOR_ENABLED = "user_two_factor_enabled"
     private const val KEY_REMEMBER_ME = "remember_me"
+    private const val KEY_KYC_DNI_FRONT = "kyc_dni_front"
+    private const val KEY_KYC_DNI_BACK = "kyc_dni_back"
+    private const val KEY_KYC_LICENSE = "kyc_license"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -107,5 +110,26 @@ object SessionManager {
 
     fun isUserLoggedIn(): Boolean {
         return getToken() != null
+    }
+
+    fun saveKycUrls(dniFront: String, dniBack: String, license: String) {
+        getPrefs().edit().apply {
+            putString(KEY_KYC_DNI_FRONT, dniFront)
+            putString(KEY_KYC_DNI_BACK, dniBack)
+            putString(KEY_KYC_LICENSE, license)
+            apply()
+        }
+    }
+
+    fun getKycDniFront(): String {
+        return getPrefs().getString(KEY_KYC_DNI_FRONT, "") ?: ""
+    }
+
+    fun getKycDniBack(): String {
+        return getPrefs().getString(KEY_KYC_DNI_BACK, "") ?: ""
+    }
+
+    fun getKycLicense(): String {
+        return getPrefs().getString(KEY_KYC_LICENSE, "") ?: ""
     }
 }
