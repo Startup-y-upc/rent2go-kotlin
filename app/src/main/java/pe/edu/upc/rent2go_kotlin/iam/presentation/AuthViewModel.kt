@@ -251,6 +251,11 @@ class AuthViewModel(
             return
         }
 
+        if (passwordResetNewPassword.length < 6) {
+            errorMessage = "La contraseña debe tener al menos 6 caracteres."
+            return
+        }
+
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
