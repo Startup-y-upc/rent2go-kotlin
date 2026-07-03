@@ -250,31 +250,29 @@ fun BookingConfirmationScreen(
                         Text("Cobertura", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Coverage Options
-                        CoverageOption(
-                            title = "Esencial",
-                            subtitle = "Franquicia 1.500 €",
-                            price = "S/ 0/día",
-                            isSelected = viewModel.coveragePlan == "ESSENTIAL",
-                            onClick = { viewModel.coveragePlan = "ESSENTIAL" }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        CoverageOption(
-                            title = "Plus",
-                            tag = "Popular",
-                            subtitle = "Sin franquicia · Recomendada",
-                            price = "S/ 8/día",
-                            isSelected = viewModel.coveragePlan == "PLUS",
-                            onClick = { viewModel.coveragePlan = "PLUS" }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        CoverageOption(
-                            title = "Premium",
-                            subtitle = "Sin franquicia + asistencia ilimitada",
-                            price = "S/ 14/día",
-                            isSelected = viewModel.coveragePlan == "PREMIUM",
-                            onClick = { viewModel.coveragePlan = "PREMIUM" }
-                        )
+                        // K8: opciones reales desde GET /payments/coverage-plans
+                        // (BASIC/STANDARD/PREMIUM/NONE), ya no códigos/precios inventados.
+                        if (viewModel.isLoadingCoveragePlans) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = PrimaryCyan)
+                            }
+                        } else if (viewModel.coveragePlans.isEmpty()) {
+                            Text("No se pudieron cargar los planes de cobertura.", fontSize = 12.sp, color = Color.Red)
+                        } else {
+                            viewModel.coveragePlans.forEachIndexed { index, plan ->
+                                CoverageOption(
+                                    title = plan.name,
+                                    tag = if (plan.code == "STANDARD") "Popular" else null,
+                                    subtitle = plan.description,
+                                    price = if (plan.dailyRateUsd == 0.0) "S/ 0" else "S/ ${String.format("%.2f", plan.dailyRateUsd)}/día",
+                                    isSelected = viewModel.coveragePlan == plan.code,
+                                    onClick = { viewModel.coveragePlan = plan.code }
+                                )
+                                if (index < viewModel.coveragePlans.lastIndex) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -286,8 +284,9 @@ fun BookingConfirmationScreen(
                             shadowElevation = 2.dp
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
+                                val coverageName = viewModel.coveragePlans.firstOrNull { it.code == viewModel.coveragePlan }?.name ?: viewModel.coveragePlan
                                 PriceRow("Renta (S/ ${String.format("%.0f", vehicle.dailyPrice)} × ${viewModel.rentalDays} días)", "S/ ${String.format("%.2f", viewModel.subtotal)}")
-                                PriceRow("Cobertura ${viewModel.coveragePlan.lowercase().replaceFirstChar { it.uppercase() }}", "S/ ${String.format("%.2f", viewModel.coverageTotal)}")
+                                PriceRow("Cobertura $coverageName", "S/ ${String.format("%.2f", viewModel.coverageTotal)}")
                                 PriceRow("Tasa de servicio (5%)", "S/ ${String.format("%.2f", viewModel.serviceFee)}")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(

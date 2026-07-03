@@ -152,7 +152,7 @@ private fun TermsBlockView(block: TermsBlock) {
             text = inlineAnnotatedString(block.text),
             style = MaterialTheme.typography.bodySmall,
             fontStyle = FontStyle.Italic,
-            color = Color.Gray,
+            color = Color.White,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         is TermsBlock.Rule -> HorizontalDivider(

@@ -24,7 +24,7 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 fun MainDashboard(
     authViewModel: AuthViewModel,
     onCarClick: (Int) -> Unit,
-    onChatClick: (String) -> Unit,
+    onChatClick: (Int) -> Unit,
     onLogoutClick: () -> Unit,
     onBookingClick: (Int) -> Unit = {},
     onKycClick: () -> Unit = {},

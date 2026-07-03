@@ -50,7 +50,7 @@ fun CarDetailScreen(
     }
 
     val scrollState = rememberScrollState()
-    var isFavorite by remember { mutableStateOf(false) }
+    val isFavorite = state.isFavorite
 
     Box(modifier = Modifier.fillMaxSize().background(LightBlueBg)) {
         when {
@@ -133,18 +133,18 @@ fun CarDetailScreen(
                                 Surface(
                                     shape = CircleShape,
                                     color = Color.White,
-                                    modifier = Modifier.size(40.dp).clickable { /* Share Action */ }
+                                    modifier = Modifier.size(40.dp).clickable { /* Share Action — K7, baja prioridad, pendiente */ }
                                 ) {
-                                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(10.dp), tint = Color.Black)
+                                    Icon(Icons.Default.Share, contentDescription = "Compartir (próximamente)", modifier = Modifier.padding(10.dp), tint = Color.Black)
                                 }
                                 Surface(
                                     shape = CircleShape,
                                     color = Color.White,
-                                    modifier = Modifier.size(40.dp).clickable { isFavorite = !isFavorite }
+                                    modifier = Modifier.size(40.dp).clickable { viewModel.toggleFavorite(carId) }
                                 ) {
                                     Icon(
                                         if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = null,
+                                        contentDescription = if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
                                         modifier = Modifier.padding(10.dp),
                                         tint = if (isFavorite) Color.Red else Color.Black
                                     )
@@ -299,6 +299,61 @@ fun CarDetailScreen(
                                 DetailRow("Año", vehicle.year.toString())
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Black.copy(alpha = 0.1f))
                                 DetailRow("Disponibilidad", if (state.occupiedUntil != null) "Hasta ${state.occupiedUntil}" else "Libre")
+                            }
+                        }
+
+                        // K6: sección de reseñas/calificación — antes inexistente.
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "RESEÑAS",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = Color.White.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                val rating = state.rating
+                                if (rating != null && rating.count > 0) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "${String.format("%.1f", rating.average)} · ${rating.count} reseñas",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = Color.Black
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+                                if (state.reviews.isEmpty()) {
+                                    Text(
+                                        text = "Este vehículo aún no tiene reseñas",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray
+                                    )
+                                } else {
+                                    state.reviews.take(5).forEachIndexed { index, review ->
+                                        Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+                                            Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Column {
+                                                Text(text = "${review.rating}/5", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.Black)
+                                                if (!review.comment.isNullOrBlank()) {
+                                                    Text(text = review.comment, fontSize = 12.sp, color = Color.Black.copy(alpha = 0.7f))
+                                                }
+                                            }
+                                        }
+                                        if (index < state.reviews.take(5).lastIndex) {
+                                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color.Black.copy(alpha = 0.08f))
+                                        }
+                                    }
+                                }
                             }
                         }
 

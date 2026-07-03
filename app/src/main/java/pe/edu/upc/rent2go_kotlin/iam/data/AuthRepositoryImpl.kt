@@ -26,7 +26,8 @@ class AuthRepositoryImpl(
                     status = body.status,
                     emailVerified = body.emailVerified,
                     phoneVerified = body.phoneVerified,
-                    twoFactorEnabled = body.twoFactorEnabled
+                    twoFactorEnabled = body.twoFactorEnabled,
+                    kycVerified = body.kycVerified
                 )
                 pe.edu.upc.rent2go_kotlin.common.SessionManager.saveSession(body.token, user)
                 return user
@@ -55,7 +56,8 @@ class AuthRepositoryImpl(
                     status = body.status,
                     emailVerified = body.emailVerified,
                     phoneVerified = body.phoneVerified,
-                    twoFactorEnabled = body.twoFactorEnabled
+                    twoFactorEnabled = body.twoFactorEnabled,
+                    kycVerified = body.kycVerified
                 )
                 // Actualizar los datos en SessionManager (el token ya está guardado)
                 pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(user)
@@ -101,7 +103,8 @@ class AuthRepositoryImpl(
                     status = body.status,
                     emailVerified = body.emailVerified,
                     phoneVerified = body.phoneVerified,
-                    twoFactorEnabled = body.twoFactorEnabled
+                    twoFactorEnabled = body.twoFactorEnabled,
+                    kycVerified = body.kycVerified
                 )
                 // Si el backend devuelve un token en el registro, guardar la sesión
                 if (!body.token.isNullOrBlank()) {
@@ -216,7 +219,8 @@ class AuthRepositoryImpl(
                     status = body.status,
                     emailVerified = body.emailVerified,
                     phoneVerified = body.phoneVerified,
-                    twoFactorEnabled = body.twoFactorEnabled
+                    twoFactorEnabled = body.twoFactorEnabled,
+                    kycVerified = body.kycVerified
                 )
                 pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(user)
                 return user
@@ -226,6 +230,36 @@ class AuthRepositoryImpl(
             }
         } catch (e: Exception) {
             throw Exception(e.message ?: "Error desconocido al actualizar el perfil")
+        }
+    }
+
+    override suspend fun resendVerificationEmail(): Boolean {
+        try {
+            val response = api.resendVerification()
+            if (response.isSuccessful) {
+                return true
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error al reenviar el correo de verificación"
+                throw Exception(errorMsg)
+            }
+        } catch (e: Exception) {
+            throw Exception(e.message ?: "Error desconocido al reenviar el correo de verificación")
+        }
+    }
+
+    override suspend fun verifyEmail(userId: Int, token: String): Boolean {
+        try {
+            val response = api.verifyEmail(VerifyEmailRequest(userId = userId, token = token))
+            if (response.isSuccessful) {
+                return true
+            }
+            // Backend maps an invalid/expired token to 400 via
+            // GlobalExceptionHandler(IllegalArgumentException) — treat that as
+            // a normal "invalid code" result, not a thrown error, so the
+            // caller can show a precise message.
+            return false
+        } catch (e: Exception) {
+            throw Exception(e.message ?: "Error desconocido al verificar el código")
         }
     }
 }

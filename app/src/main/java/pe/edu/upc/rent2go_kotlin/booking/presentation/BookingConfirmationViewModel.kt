@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import pe.edu.upc.rent2go_kotlin.booking.data.CreateBookingRequest
 import pe.edu.upc.rent2go_kotlin.booking.domain.BookingRepository
+import pe.edu.upc.rent2go_kotlin.booking.domain.CoveragePlan
+import pe.edu.upc.rent2go_kotlin.booking.domain.PaymentsRepository
 import pe.edu.upc.rent2go_kotlin.catalog.domain.Vehicle
 import pe.edu.upc.rent2go_kotlin.catalog.domain.VehicleRepository
 import pe.edu.upc.rent2go_kotlin.common.SessionManager
@@ -16,8 +18,16 @@ import java.time.temporal.ChronoUnit
 
 class BookingConfirmationViewModel(
     private val bookingRepository: BookingRepository,
-    private val vehicleRepository: VehicleRepository
+    private val vehicleRepository: VehicleRepository,
+    private val paymentsRepository: PaymentsRepository = pe.edu.upc.rent2go_kotlin.common.DependencyProvider.paymentsRepository
 ) : ViewModel() {
+
+    // K8: planes reales del backend (BASIC/STANDARD/PREMIUM/NONE), ya no
+    // ESSENTIAL/PLUS/PREMIUM inventados ni precios hardcodeados S/0/8/14.
+    var coveragePlans by mutableStateOf<List<CoveragePlan>>(emptyList())
+        private set
+    var isLoadingCoveragePlans by mutableStateOf(false)
+        private set
 
     var vehicle by mutableStateOf<Vehicle?>(null)
         private set
@@ -31,7 +41,7 @@ class BookingConfirmationViewModel(
     // Inputs
     var startDate by mutableStateOf(LocalDate.now())
     var endDate by mutableStateOf(LocalDate.now().plusDays(2))
-    var coveragePlan by mutableStateOf("PLUS") // ESSENTIAL, PLUS, PREMIUM
+    var coveragePlan by mutableStateOf("STANDARD") // BASIC, STANDARD, PREMIUM, NONE (códigos reales del backend)
 
     // Form Status
     var isSubmitting by mutableStateOf(false)
@@ -64,12 +74,7 @@ class BookingConfirmationViewModel(
         get() = dailyPrice * rentalDays
 
     val coveragePricePerDay: Double
-        get() = when (coveragePlan) {
-            "ESSENTIAL" -> 0.0
-            "PLUS" -> 8.0
-            "PREMIUM" -> 14.0
-            else -> 0.0
-        }
+        get() = coveragePlans.firstOrNull { it.code == coveragePlan }?.dailyRateUsd ?: 0.0
 
     val coverageTotal: Double
         get() = coveragePricePerDay * rentalDays
@@ -91,6 +96,27 @@ class BookingConfirmationViewModel(
                 errorVehicle = e.message ?: "Error al obtener detalles del vehículo"
             } finally {
                 isLoadingVehicle = false
+            }
+        }
+        loadCoveragePlans()
+    }
+
+    private fun loadCoveragePlans() {
+        viewModelScope.launch {
+            isLoadingCoveragePlans = true
+            try {
+                coveragePlans = paymentsRepository.getCoveragePlans()
+                // Selecciona STANDARD si existe, o el primer plan real devuelto por
+                // el backend — nunca un código inventado como "PLUS"/"ESSENTIAL".
+                if (coveragePlans.isNotEmpty() && coveragePlans.none { it.code == coveragePlan }) {
+                    coveragePlan = coveragePlans.firstOrNull { it.code == "STANDARD" }?.code
+                        ?: coveragePlans.first().code
+                }
+            } catch (e: Exception) {
+                // Si falla, coveragePlans queda vacío y la UI debe mostrar un estado
+                // de error explícito en vez de precios inventados.
+            } finally {
+                isLoadingCoveragePlans = false
             }
         }
     }

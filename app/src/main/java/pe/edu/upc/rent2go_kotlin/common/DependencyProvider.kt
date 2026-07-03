@@ -18,6 +18,12 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import pe.edu.upc.rent2go_kotlin.booking.data.BookingApi
 import pe.edu.upc.rent2go_kotlin.booking.data.BookingRepositoryImpl
 import pe.edu.upc.rent2go_kotlin.booking.domain.BookingRepository
+import pe.edu.upc.rent2go_kotlin.booking.data.FavoritesApi
+import pe.edu.upc.rent2go_kotlin.booking.data.FavoritesRepositoryImpl
+import pe.edu.upc.rent2go_kotlin.booking.domain.FavoritesRepository
+import pe.edu.upc.rent2go_kotlin.booking.data.PaymentsApi
+import pe.edu.upc.rent2go_kotlin.booking.data.PaymentsRepositoryImpl
+import pe.edu.upc.rent2go_kotlin.booking.domain.PaymentsRepository
 
 object DependencyProvider {
     private val json = Json { ignoreUnknownKeys = true }
@@ -61,10 +67,14 @@ object DependencyProvider {
     private val authApi: AuthApi = retrofit.create(AuthApi::class.java)
     private val communityApi: CommunityApi = retrofit.create(CommunityApi::class.java)
     private val bookingApi: BookingApi = retrofit.create(BookingApi::class.java)
+    private val favoritesApi: FavoritesApi = retrofit.create(FavoritesApi::class.java)
+    private val paymentsApi: PaymentsApi = retrofit.create(PaymentsApi::class.java)
 
     // Repositories
     val vehicleRepository: VehicleRepository = VehicleRepositoryImpl(api)
     val authRepository: AuthRepository = AuthRepositoryImpl(authApi)
     val communityRepository: CommunityRepository = CommunityRepositoryImpl(communityApi)
     val bookingRepository: BookingRepository = BookingRepositoryImpl(bookingApi)
+    val favoritesRepository: FavoritesRepository = FavoritesRepositoryImpl(favoritesApi)
+    val paymentsRepository: PaymentsRepository = PaymentsRepositoryImpl(paymentsApi)
 }

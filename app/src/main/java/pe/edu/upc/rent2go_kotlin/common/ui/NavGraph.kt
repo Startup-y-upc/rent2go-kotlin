@@ -121,8 +121,8 @@ fun SetupNavGraph(navController: NavHostController) {
                 onCarClick = { carId ->
                     navController.navigate("car_detail/$carId")
                 },
-                onChatClick = { userName ->
-                    navController.navigate("chat_detail/$userName")
+                onChatClick = { conversationId ->
+                    navController.navigate("chat_detail/$conversationId")
                 },
                 onLogoutClick = {
                     navController.navigate("login") {
@@ -148,12 +148,14 @@ fun SetupNavGraph(navController: NavHostController) {
             )
         }
         composable(
-            route = "chat_detail/{userName}",
-            arguments = listOf(navArgument("userName") { type = NavType.StringType })
+            route = "chat_detail/{conversationId}",
+            arguments = listOf(navArgument("conversationId") { type = NavType.IntType })
         ) { backStackEntry ->
-            val userName = backStackEntry.arguments?.getString("userName") ?: ""
+            val conversationId = backStackEntry.arguments?.getInt("conversationId") ?: 0
             ChatDetailScreen(
-                userName = userName,
+                conversationId = conversationId,
+                reservationId = null,
+                userName = "Conversación",
                 onBackClick = {
                     navController.popBackStack()
                 }

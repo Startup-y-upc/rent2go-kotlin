@@ -64,5 +64,15 @@ class MockAuthRepositoryImpl : AuthRepository {
             "RENTER"
         )
     }
+
+    override suspend fun resendVerificationEmail(): Boolean {
+        delay(500)
+        return true
+    }
+
+    override suspend fun verifyEmail(userId: Int, token: String): Boolean {
+        delay(500)
+        return token.isNotBlank()
+    }
 }
 
