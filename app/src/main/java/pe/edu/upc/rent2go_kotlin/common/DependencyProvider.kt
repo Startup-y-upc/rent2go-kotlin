@@ -24,6 +24,9 @@ import pe.edu.upc.rent2go_kotlin.booking.domain.FavoritesRepository
 import pe.edu.upc.rent2go_kotlin.booking.data.PaymentsApi
 import pe.edu.upc.rent2go_kotlin.booking.data.PaymentsRepositoryImpl
 import pe.edu.upc.rent2go_kotlin.booking.domain.PaymentsRepository
+import pe.edu.upc.rent2go_kotlin.notifications.data.NotificationApi
+import pe.edu.upc.rent2go_kotlin.notifications.data.NotificationRepositoryImpl
+import pe.edu.upc.rent2go_kotlin.notifications.domain.NotificationRepository
 
 object DependencyProvider {
     private val json = Json { ignoreUnknownKeys = true }
@@ -69,6 +72,7 @@ object DependencyProvider {
     private val bookingApi: BookingApi = retrofit.create(BookingApi::class.java)
     private val favoritesApi: FavoritesApi = retrofit.create(FavoritesApi::class.java)
     private val paymentsApi: PaymentsApi = retrofit.create(PaymentsApi::class.java)
+    private val notificationApi: NotificationApi = retrofit.create(NotificationApi::class.java)
 
     // Repositories
     val vehicleRepository: VehicleRepository = VehicleRepositoryImpl(api)
@@ -77,4 +81,5 @@ object DependencyProvider {
     val bookingRepository: BookingRepository = BookingRepositoryImpl(bookingApi)
     val favoritesRepository: FavoritesRepository = FavoritesRepositoryImpl(favoritesApi)
     val paymentsRepository: PaymentsRepository = PaymentsRepositoryImpl(paymentsApi)
+    val notificationRepository: NotificationRepository = NotificationRepositoryImpl(notificationApi)
 }

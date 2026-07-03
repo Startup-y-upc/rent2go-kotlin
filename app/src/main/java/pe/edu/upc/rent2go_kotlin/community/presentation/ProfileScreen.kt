@@ -31,6 +31,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 
 @Composable
 fun ProfileScreen(
@@ -38,7 +39,8 @@ fun ProfileScreen(
     profileViewModel: ProfileViewModel = viewModel(),
     onLogoutClick: () -> Unit,
     onKycClick: () -> Unit,
-    onTermsClick: () -> Unit = {}
+    onTermsClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val user = authViewModel.currentUser
@@ -156,6 +158,13 @@ fun ProfileScreen(
                             fontSize = 12.sp,
                             color = TextGray
                         )
+                    }
+                    // US50/US51/US52 — entry point to the in-app notification feed.
+                    IconButton(
+                        onClick = onNotificationsClick,
+                        modifier = Modifier.testTag("profile_notifications_button")
+                    ) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Notificaciones", tint = Color.White)
                     }
                     // US09 — edit own profile (name/phone)
                     IconButton(onClick = { authViewModel.startEditingProfile() }) {

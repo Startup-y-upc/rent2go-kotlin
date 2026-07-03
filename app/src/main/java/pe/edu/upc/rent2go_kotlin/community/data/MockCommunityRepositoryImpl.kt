@@ -4,6 +4,9 @@ import kotlinx.coroutines.delay
 import pe.edu.upc.rent2go_kotlin.community.domain.ChatMessage
 import pe.edu.upc.rent2go_kotlin.community.domain.CommunityRepository
 import pe.edu.upc.rent2go_kotlin.community.domain.Conversation
+import pe.edu.upc.rent2go_kotlin.community.domain.ReviewCategory
+import pe.edu.upc.rent2go_kotlin.community.domain.SubmittedReview
+import pe.edu.upc.rent2go_kotlin.community.domain.TrustReport
 import pe.edu.upc.rent2go_kotlin.community.domain.UserReputation
 import pe.edu.upc.rent2go_kotlin.community.domain.VehicleRating
 import pe.edu.upc.rent2go_kotlin.community.domain.VehicleReview
@@ -55,5 +58,32 @@ class MockCommunityRepositoryImpl : CommunityRepository {
     override suspend fun getVehicleReviews(vehicleId: Int): List<VehicleReview> {
         delay(300)
         return emptyList()
+    }
+
+    override suspend fun openDispute(reservationId: Int, reporterId: Int, reason: String): TrustReport {
+        delay(300)
+        return TrustReport(id = 0, reservationId = reservationId, reporterId = reporterId, reason = reason, status = "OPEN", createdAt = null)
+    }
+
+    override suspend fun getUserDisputes(userId: Int): List<TrustReport> {
+        delay(300)
+        return emptyList()
+    }
+
+    override suspend fun submitReview(
+        reservationId: Int,
+        vehicleId: Int,
+        reviewerId: Int,
+        reviewedUserId: Int?,
+        category: ReviewCategory,
+        rating: Int,
+        comment: String?
+    ): SubmittedReview {
+        delay(300)
+        return SubmittedReview(
+            id = 0, reservationId = reservationId, vehicleId = vehicleId, reviewerId = reviewerId,
+            reviewedUserId = reviewedUserId, category = category.apiValue, rating = rating,
+            status = "PENDING", comment = comment, createdAt = null
+        )
     }
 }

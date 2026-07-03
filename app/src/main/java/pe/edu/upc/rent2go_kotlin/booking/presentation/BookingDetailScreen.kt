@@ -21,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
@@ -28,6 +29,8 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.DarkBlue
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
+import pe.edu.upc.rent2go_kotlin.community.presentation.DisputeDialog
+import pe.edu.upc.rent2go_kotlin.community.presentation.RatingDialog
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
@@ -60,6 +63,70 @@ fun BookingDetailScreen(
 
     val booking = viewModel.booking
     val vehicle = viewModel.vehicle
+
+    // US41/US43 (Renter) — dispute/rating submission entry points for this reservation.
+    var showDisputeDialog by remember { mutableStateOf(false) }
+    var showRatingDialog by remember { mutableStateOf(false) }
+    var disputeSubmittedMessage by remember { mutableStateOf<String?>(null) }
+    var ratingSubmittedMessage by remember { mutableStateOf<String?>(null) }
+
+    if (showDisputeDialog && booking != null) {
+        DisputeDialog(
+            reservationId = booking.id,
+            onDismiss = { showDisputeDialog = false },
+            onSubmitted = {
+                showDisputeDialog = false
+                disputeSubmittedMessage = "Tu reporte fue enviado. Nuestro equipo lo revisará pronto."
+            }
+        )
+    }
+
+    if (showRatingDialog && booking != null) {
+        RatingDialog(
+            reservationId = booking.id,
+            vehicleId = booking.vehicleId,
+            reviewedUserId = booking.ownerId,
+            onDismiss = { showRatingDialog = false },
+            onSubmitted = {
+                showRatingDialog = false
+                ratingSubmittedMessage = "¡Gracias! Tu reseña fue enviada."
+            }
+        )
+    }
+
+    if (disputeSubmittedMessage != null) {
+        AlertDialog(
+            onDismissRequest = { disputeSubmittedMessage = null },
+            containerColor = Color.White,
+            title = { Text("Reporte enviado", fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = { Text(disputeSubmittedMessage ?: "", color = Color.DarkGray) },
+            confirmButton = {
+                TextButton(
+                    onClick = { disputeSubmittedMessage = null },
+                    modifier = Modifier.testTag("dispute_confirmation_ok_button")
+                ) {
+                    Text("Entendido", color = PrimaryCyan, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (ratingSubmittedMessage != null) {
+        AlertDialog(
+            onDismissRequest = { ratingSubmittedMessage = null },
+            containerColor = Color.White,
+            title = { Text("Reseña enviada", fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = { Text(ratingSubmittedMessage ?: "", color = Color.DarkGray) },
+            confirmButton = {
+                TextButton(
+                    onClick = { ratingSubmittedMessage = null },
+                    modifier = Modifier.testTag("rating_confirmation_ok_button")
+                ) {
+                    Text("Entendido", color = PrimaryCyan, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -165,6 +232,13 @@ fun BookingDetailScreen(
                             BookingDetailDamageCard(damageReport = booking.damageReport)
                             Spacer(modifier = Modifier.height(12.dp))
                         }
+
+                        // ── US41/US43 (Renter) — Rating & Dispute entry points ──
+                        BookingDetailActionsCard(
+                            status = booking.status,
+                            onRateClick = { showRatingDialog = true },
+                            onReportClick = { showDisputeDialog = true }
+                        )
 
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -526,6 +600,51 @@ private fun BookingDetailDamageCard(damageReport: String) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(damageReport, fontSize = 13.sp, color = Color.DarkGray)
+        }
+    }
+}
+
+@Composable
+private fun BookingDetailActionsCard(
+    status: String,
+    onRateClick: () -> Unit,
+    onReportClick: () -> Unit
+) {
+    Spacer(modifier = Modifier.height(12.dp))
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White.copy(alpha = 0.8f),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("¿Necesitas ayuda con esta reserva?", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // US43 — rating is only offered once the rental has completed.
+                if (status == "COMPLETED") {
+                    Button(
+                        onClick = onRateClick,
+                        modifier = Modifier.weight(1f).testTag("rate_reservation_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan)
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Calificar", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                OutlinedButton(
+                    onClick = onReportClick,
+                    modifier = Modifier.weight(1f).testTag("report_reservation_button")
+                ) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF56C6C), modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Reportar problema", color = Color(0xFFF56C6C), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }

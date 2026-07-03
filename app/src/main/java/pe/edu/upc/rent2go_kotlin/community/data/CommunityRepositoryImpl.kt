@@ -3,6 +3,9 @@ package pe.edu.upc.rent2go_kotlin.community.data
 import pe.edu.upc.rent2go_kotlin.community.domain.ChatMessage
 import pe.edu.upc.rent2go_kotlin.community.domain.CommunityRepository
 import pe.edu.upc.rent2go_kotlin.community.domain.Conversation
+import pe.edu.upc.rent2go_kotlin.community.domain.ReviewCategory
+import pe.edu.upc.rent2go_kotlin.community.domain.SubmittedReview
+import pe.edu.upc.rent2go_kotlin.community.domain.TrustReport
 import pe.edu.upc.rent2go_kotlin.community.domain.UserReputation
 import pe.edu.upc.rent2go_kotlin.community.domain.VehicleRating
 import pe.edu.upc.rent2go_kotlin.community.domain.VehicleReview
@@ -86,6 +89,59 @@ class CommunityRepositoryImpl(
         }
         return emptyList()
     }
+
+    override suspend fun openDispute(reservationId: Int, reporterId: Int, reason: String): TrustReport {
+        val response = api.openDispute(reservationId, OpenDisputeRequest(reporterId = reporterId, reason = reason))
+        if (response.isSuccessful) {
+            return (response.body() ?: throw Exception("Respuesta vacía al reportar la reserva")).toDomain()
+        }
+        throw Exception("No se pudo enviar el reporte (HTTP ${response.code()})")
+    }
+
+    override suspend fun getUserDisputes(userId: Int): List<TrustReport> {
+        val response = api.getUserDisputes(userId)
+        if (response.isSuccessful) {
+            return (response.body() ?: emptyList()).map { it.toDomain() }
+        }
+        throw Exception("No se pudieron cargar tus reportes (HTTP ${response.code()})")
+    }
+
+    override suspend fun submitReview(
+        reservationId: Int,
+        vehicleId: Int,
+        reviewerId: Int,
+        reviewedUserId: Int?,
+        category: ReviewCategory,
+        rating: Int,
+        comment: String?
+    ): SubmittedReview {
+        val response = api.submitReview(
+            SubmitReviewRequest(
+                reservationId = reservationId,
+                vehicleId = vehicleId,
+                reviewerId = reviewerId,
+                reviewedUserId = reviewedUserId,
+                category = category.apiValue,
+                rating = rating,
+                comment = comment
+            )
+        )
+        if (response.isSuccessful) {
+            return (response.body() ?: throw Exception("Respuesta vacía al enviar la reseña")).toDomain()
+        }
+        throw Exception("No se pudo enviar la reseña (HTTP ${response.code()})")
+    }
+
+    private fun TrustReportResponse.toDomain() = TrustReport(
+        id = id, reservationId = reservationId, reporterId = reporterId,
+        reason = reason, status = status, createdAt = createdAt
+    )
+
+    private fun ReviewResponse.toDomain() = SubmittedReview(
+        id = id, reservationId = reservationId, vehicleId = vehicleId,
+        reviewerId = reviewerId, reviewedUserId = reviewedUserId, category = category,
+        rating = rating, status = status, comment = comment, createdAt = createdAt
+    )
 
     private fun ConversationResponse.toDomain() = Conversation(
         id = id, ownerId = ownerId, renterId = renterId, vehicleId = vehicleId,

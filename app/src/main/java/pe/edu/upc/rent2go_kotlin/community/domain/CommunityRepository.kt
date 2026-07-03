@@ -11,4 +11,19 @@ interface CommunityRepository {
 
     suspend fun getVehicleRating(vehicleId: Int): VehicleRating?
     suspend fun getVehicleReviews(vehicleId: Int): List<VehicleReview>
+
+    // US41 (Renter) — dispute/report submission on a reservation.
+    suspend fun openDispute(reservationId: Int, reporterId: Int, reason: String): TrustReport
+    suspend fun getUserDisputes(userId: Int): List<TrustReport>
+
+    // US43 (Renter) — rating submission on a completed reservation.
+    suspend fun submitReview(
+        reservationId: Int,
+        vehicleId: Int,
+        reviewerId: Int,
+        reviewedUserId: Int?,
+        category: ReviewCategory,
+        rating: Int,
+        comment: String?
+    ): SubmittedReview
 }

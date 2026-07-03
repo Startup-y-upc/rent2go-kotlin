@@ -33,4 +33,19 @@ interface CommunityApi {
 
     @GET("api/v1/community-trust/reviews/vehicle/{vehicleId}")
     suspend fun getVehicleReviews(@Path("vehicleId") vehicleId: Int): Response<List<ReviewResponse>>
+
+    // US41 (Renter) — dispute/report submission on a reservation.
+    @POST("api/v1/community-trust/reservations/{reservationId}/disputes")
+    suspend fun openDispute(
+        @Path("reservationId") reservationId: Int,
+        @Body request: OpenDisputeRequest
+    ): Response<TrustReportResponse>
+
+    // Caller's own disputes only (403/empty for others) — used to confirm submission/history.
+    @GET("api/v1/community-trust/users/{userId}/disputes")
+    suspend fun getUserDisputes(@Path("userId") userId: Int): Response<List<TrustReportResponse>>
+
+    // US43 (Renter) — rating submission on a completed reservation.
+    @POST("api/v1/community-trust/reviews")
+    suspend fun submitReview(@Body request: SubmitReviewRequest): Response<ReviewResponse>
 }

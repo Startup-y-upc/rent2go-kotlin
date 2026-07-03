@@ -83,3 +83,38 @@ data class ReviewResponse(
     val comment: String? = null,
     val createdAt: String? = null
 )
+
+// US41/US43 (Renter) — dispute/rating submission mirrors Flutter's Phase 6 work.
+// Exact backend shapes per CommunityTrustController (community-trust bounded context).
+
+/** Body for POST /api/v1/community-trust/reservations/{reservationId}/disputes.
+ * OpenReservationDisputeResource on the backend has NO category field — reason only. */
+@Serializable
+data class OpenDisputeRequest(
+    val reporterId: Int,
+    val reason: String
+)
+
+/** TrustReportResource exacto del backend — response of dispute submission and
+ * GET /users/{userId}/disputes (caller's own disputes only). */
+@Serializable
+data class TrustReportResponse(
+    val id: Int,
+    val reservationId: Int? = null,
+    val reporterId: Int,
+    val reason: String,
+    val status: String,
+    val createdAt: String? = null
+)
+
+/** Body for POST /api/v1/community-trust/reviews. */
+@Serializable
+data class SubmitReviewRequest(
+    val reservationId: Int,
+    val vehicleId: Int,
+    val reviewerId: Int,
+    val reviewedUserId: Int? = null,
+    val category: String,
+    val rating: Int,
+    val comment: String? = null
+)

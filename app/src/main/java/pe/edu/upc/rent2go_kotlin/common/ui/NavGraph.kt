@@ -20,6 +20,7 @@ import pe.edu.upc.rent2go_kotlin.booking.presentation.ChatDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingConfirmationScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingDetailScreen
 import pe.edu.upc.rent2go_kotlin.community.presentation.TermsScreen
+import pe.edu.upc.rent2go_kotlin.notifications.presentation.NotificationsScreen
 
 @Composable
 fun SetupNavGraph(navController: NavHostController) {
@@ -137,12 +138,22 @@ fun SetupNavGraph(navController: NavHostController) {
                 },
                 onTermsClick = {
                     navController.navigate("terms")
+                },
+                onNotificationsClick = {
+                    navController.navigate("notifications")
                 }
             )
         }
         composable(route = "terms") {
             TermsScreen(
                 onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(route = "notifications") {
+            NotificationsScreen(
+                onBackClick = {
                     navController.popBackStack()
                 }
             )
