@@ -2,7 +2,9 @@ package pe.edu.upc.rent2go_kotlin.booking.data
 
 import kotlinx.serialization.Serializable
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 
 /** Item exacto devuelto por GET /api/v1/payments/coverage-plans:
  * códigos reales BASIC/STANDARD/PREMIUM/NONE a $5/$12/$20/día. */
@@ -14,7 +16,26 @@ data class CoveragePlanResponse(
     val dailyRateUSD: Double
 )
 
+/** Cuerpo exacto de POST /api/v1/payments/create-intent (CreateIntentRequest del backend). */
+@Serializable
+data class CreateIntentRequest(
+    val reservationId: Int,
+    val amountCents: Int,
+    val currency: String = "usd"
+)
+
+/** Respuesta exacta de POST /api/v1/payments/create-intent (CreateIntentResponse del backend):
+ * clientSecret se usa para confirmar el cobro con el SDK de Stripe (PaymentSheet), US58/TS16. */
+@Serializable
+data class CreateIntentResponse(
+    val clientSecret: String,
+    val id: String
+)
+
 interface PaymentsApi {
     @GET("api/v1/payments/coverage-plans")
     suspend fun getCoveragePlans(): Response<List<CoveragePlanResponse>>
+
+    @POST("api/v1/payments/create-intent")
+    suspend fun createPaymentIntent(@Body request: CreateIntentRequest): Response<CreateIntentResponse>
 }

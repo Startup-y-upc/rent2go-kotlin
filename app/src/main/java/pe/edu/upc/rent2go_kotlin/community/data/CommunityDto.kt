@@ -1,6 +1,7 @@
 package pe.edu.upc.rent2go_kotlin.community.data
 
 import kotlinx.serialization.Serializable
+import pe.edu.upc.rent2go_kotlin.common.CounterpartyDto
 
 @Serializable
 data class UserReputationResponse(
@@ -28,7 +29,10 @@ data class ConversationResponse(
     val lastMessageAt: String? = null,
     val lastMessagePreview: String? = null,
     val createdAt: String? = null,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    // TS18/US60 — additive; absent on older cached responses.
+    val owner: CounterpartyDto? = null,
+    val renter: CounterpartyDto? = null
 )
 
 /** MessageResource exacto del backend (CommunityTrustController). */

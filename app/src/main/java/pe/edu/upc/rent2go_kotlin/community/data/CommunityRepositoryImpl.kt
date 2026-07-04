@@ -1,5 +1,6 @@
 package pe.edu.upc.rent2go_kotlin.community.data
 
+import pe.edu.upc.rent2go_kotlin.common.toDomain
 import pe.edu.upc.rent2go_kotlin.community.domain.ChatMessage
 import pe.edu.upc.rent2go_kotlin.community.domain.CommunityRepository
 import pe.edu.upc.rent2go_kotlin.community.domain.Conversation
@@ -146,7 +147,9 @@ class CommunityRepositoryImpl(
     private fun ConversationResponse.toDomain() = Conversation(
         id = id, ownerId = ownerId, renterId = renterId, vehicleId = vehicleId,
         reservationId = reservationId, subject = subject, status = status,
-        lastMessageAt = lastMessageAt, lastMessagePreview = lastMessagePreview
+        lastMessageAt = lastMessageAt, lastMessagePreview = lastMessagePreview,
+        owner = owner.toDomain(ownerId, "Propietario #$ownerId"),
+        renter = renter.toDomain(renterId, "Arrendatario #$renterId")
     )
 
     private fun MessageResponse.toDomain() = ChatMessage(

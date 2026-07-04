@@ -36,6 +36,14 @@ class ChatDetailViewModel(
     var conversationSubject by mutableStateOf<String?>(null)
         private set
 
+    // TS18/US60 — real counterparty name for the chat header, replacing the hardcoded
+    // "Conversación" fallback / free-text subject. Null until the conversation loads;
+    // the Composable's own userName param covers that brief loading window.
+    var counterpartyName by mutableStateOf<String?>(null)
+        private set
+    var counterpartyKycVerified by mutableStateOf(false)
+        private set
+
     val currentUserId: Int get() = SessionManager.getUserId()
 
     fun loadMessages(conversationId: Int, reservationIdHint: Int?) {
@@ -54,6 +62,16 @@ class ChatDetailViewModel(
             try {
                 val conversation = repository.getConversation(conversationId)
                 conversationSubject = conversation?.subject
+                // TS18/US60 — the header should show who you're talking to (real name +
+                // KYC status), not the free-text subject. currentUserId tells us whether
+                // we are the owner or the renter in this conversation, so we can pick the
+                // *other* party's counterparty object.
+                if (conversation != null) {
+                    val isCurrentUserOwner = currentUserId == conversation.ownerId
+                    val counterparty = if (isCurrentUserOwner) conversation.renter else conversation.owner
+                    counterpartyName = counterparty.fullName
+                    counterpartyKycVerified = counterparty.kycVerified
+                }
                 // Si no se recibió un reservationId por navegación, se resuelve
                 // consultando la conversación real (GET /conversations/{id}) —
                 // su campo reservationId es la fuente de verdad, no un valor local.

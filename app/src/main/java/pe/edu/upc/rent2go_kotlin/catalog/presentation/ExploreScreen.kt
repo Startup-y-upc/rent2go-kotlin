@@ -8,7 +8,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -52,6 +54,12 @@ fun ExploreScreen(
     val state = viewModel.state.value
     var showFilterSheet by remember { mutableStateOf(false) }
 
+    // TS19 — geo-radius search: a long-press on the map drops a pin and searches within
+    // radiusKm of it, using the same centerLatitude/centerLongitude/radiusKm backend params
+    // Flutter's map/radius search uses (VehicleController.java — no contract difference).
+    var radiusCenter by remember { mutableStateOf<LatLng?>(null) }
+    var radiusKm by remember { mutableStateOf(10f) }
+
     val lima = LatLng(-12.046374, -77.042793)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(lima, 11f)
@@ -59,7 +67,7 @@ fun ExploreScreen(
 
     val firstVehicleWithLocation = state.vehicles.firstOrNull { it.latitude != null && it.longitude != null }
     LaunchedEffect(firstVehicleWithLocation) {
-        if (firstVehicleWithLocation != null) {
+        if (firstVehicleWithLocation != null && radiusCenter == null) {
             cameraPositionState.position = CameraPosition.fromLatLngZoom(
                 LatLng(firstVehicleWithLocation.latitude!!, firstVehicleWithLocation.longitude!!),
                 13f
@@ -156,7 +164,8 @@ fun ExploreScreen(
         ) {
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState
+                cameraPositionState = cameraPositionState,
+                onMapLongClick = { latLng -> radiusCenter = latLng }
             ) {
                 state.vehicles.forEach { vehicle ->
                     if (vehicle.latitude != null && vehicle.longitude != null) {
@@ -165,6 +174,71 @@ fun ExploreScreen(
                             title = "${vehicle.make} ${vehicle.model}",
                             snippet = "S/ ${String.format("%.0f", vehicle.dailyPrice)}/día"
                         )
+                    }
+                }
+                radiusCenter?.let { center ->
+                    Marker(
+                        state = MarkerState(position = center),
+                        title = "Buscar aquí",
+                        snippet = "Radio: ${radiusKm.toInt()} km"
+                    )
+                }
+            }
+            if (radiusCenter == null) {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp),
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        "Mantén presionado el mapa para buscar por zona",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+
+        // TS19 — radius control row: only shown once a search pin has been dropped.
+        if (radiusCenter != null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp),
+                shadowElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("Radio de búsqueda: ${radiusKm.toInt()} km", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+                    Slider(
+                        value = radiusKm,
+                        onValueChange = { radiusKm = it },
+                        valueRange = 1f..50f,
+                        colors = SliderDefaults.colors(thumbColor = PrimaryCyan, activeTrackColor = PrimaryCyan)
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = {
+                            radiusCenter = null
+                            viewModel.applyFilters(state.filters.copy(centerLatitude = null, centerLongitude = null, radiusKm = null))
+                        }) {
+                            Text("Quitar zona")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                val center = radiusCenter ?: return@Button
+                                viewModel.applyFilters(
+                                    state.filters.copy(
+                                        centerLatitude = center.latitude,
+                                        centerLongitude = center.longitude,
+                                        radiusKm = radiusKm.toDouble()
+                                    )
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan)
+                        ) {
+                            Text("Buscar en esta zona")
+                        }
                     }
                 }
             }
@@ -299,7 +373,7 @@ fun ExploreScreen(
  * US27 — Filtrar vehículos por criterios (precio, asientos, transmisión, combustible).
  * Forwards directly to the existing backend query params — no backend change required.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FilterSheet(
     initialFilters: VehicleFilters,
@@ -314,11 +388,18 @@ fun FilterSheet(
     var fuelType by remember { mutableStateOf(initialFilters.fuelType) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+                // US63 — the sheet's content can grow taller than the screen (long fuel-chip
+                // wrap, small devices); without this it would previously overflow/clip.
+                .verticalScroll(rememberScrollState())
+        ) {
             Text("Filtrar vehículos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Precio por día (S/)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            FilterSectionLabel("Precio por día (S/)")
             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 OutlinedTextField(
                     value = minPrice,
@@ -335,8 +416,9 @@ fun FilterSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Asientos mínimos", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            FilterSectionDivider()
+
+            FilterSectionLabel("Asientos mínimos")
             OutlinedTextField(
                 value = seats,
                 onValueChange = { seats = it.filter { c -> c.isDigit() } },
@@ -344,8 +426,9 @@ fun FilterSheet(
                 placeholder = { Text("Ej. 4") }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Transmisión", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            FilterSectionDivider()
+
+            FilterSectionLabel("Transmisión")
             Row(modifier = Modifier.padding(top = 8.dp)) {
                 listOf("MANUAL", "AUTOMATIC").forEach { option ->
                     FilterChip(
@@ -357,15 +440,21 @@ fun FilterSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Combustible", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
-            Row(modifier = Modifier.padding(top = 8.dp)) {
+            FilterSectionDivider()
+
+            FilterSectionLabel("Combustible")
+            // US63 — fuel chips now wrap onto multiple lines instead of a non-wrapping Row,
+            // which used to clip/overflow on narrower screens with all 4 options visible.
+            FlowRow(
+                modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 listOf("GASOLINE", "DIESEL", "ELECTRIC", "HYBRID").forEach { option ->
                     FilterChip(
                         selected = fuelType == option,
                         onClick = { fuelType = if (fuelType == option) null else option },
-                        label = { Text(option.lowercase().replaceFirstChar { it.uppercase() }) },
-                        modifier = Modifier.padding(end = 8.dp)
+                        label = { Text(option.lowercase().replaceFirstChar { it.uppercase() }) }
                     )
                 }
             }
@@ -387,7 +476,12 @@ fun FilterSheet(
                                 maxPrice = maxPrice.toDoubleOrNull(),
                                 seats = seats.toIntOrNull(),
                                 transmission = transmission,
-                                fuelType = fuelType
+                                fuelType = fuelType,
+                                // TS19 — preserve any active geo-radius search when applying
+                                // the other filters, so they combine instead of overwriting it.
+                                centerLatitude = initialFilters.centerLatitude,
+                                centerLongitude = initialFilters.centerLongitude,
+                                radiusKm = initialFilters.radiusKm
                             )
                         )
                     },
@@ -399,6 +493,16 @@ fun FilterSheet(
             }
         }
     }
+}
+
+@Composable
+private fun FilterSectionLabel(text: String) {
+    Text(text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+}
+
+@Composable
+private fun FilterSectionDivider() {
+    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color.Black.copy(alpha = 0.08f))
 }
 
 @Composable

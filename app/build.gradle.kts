@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
 
+    // Payments (US58/TS16) — Stripe test-mode PaymentSheet confirmation
+    implementation(libs.stripe.android)
+
     // UI
     implementation(libs.coil.compose)
     implementation(libs.androidx.navigation.compose)

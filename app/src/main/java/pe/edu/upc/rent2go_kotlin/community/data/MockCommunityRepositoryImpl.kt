@@ -36,7 +36,9 @@ class MockCommunityRepositoryImpl : CommunityRepository {
         return Conversation(
             id = 0, ownerId = ownerId, renterId = renterId, vehicleId = vehicleId,
             reservationId = reservationId, subject = null, status = "OPEN",
-            lastMessageAt = null, lastMessagePreview = null
+            lastMessageAt = null, lastMessagePreview = null,
+            owner = pe.edu.upc.rent2go_kotlin.common.Counterparty(ownerId, "Propietario #$ownerId", false),
+            renter = pe.edu.upc.rent2go_kotlin.common.Counterparty(renterId, "Arrendatario #$renterId", false)
         )
     }
 

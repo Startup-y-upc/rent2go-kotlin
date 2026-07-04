@@ -1,5 +1,7 @@
 package pe.edu.upc.rent2go_kotlin.community.domain
 
+import pe.edu.upc.rent2go_kotlin.common.Counterparty
+
 data class Conversation(
     val id: Int,
     val ownerId: Int,
@@ -9,7 +11,11 @@ data class Conversation(
     val subject: String?,
     val status: String,
     val lastMessageAt: String?,
-    val lastMessagePreview: String?
+    val lastMessagePreview: String?,
+    // TS18/US60 — always populated (falls back to a labeled raw ID if the backend
+    // hasn't sent the nested object yet).
+    val owner: Counterparty,
+    val renter: Counterparty
 )
 
 data class ChatMessage(

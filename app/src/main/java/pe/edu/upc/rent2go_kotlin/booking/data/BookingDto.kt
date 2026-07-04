@@ -2,6 +2,8 @@ package pe.edu.upc.rent2go_kotlin.booking.data
 
 import kotlinx.serialization.Serializable
 import pe.edu.upc.rent2go_kotlin.booking.domain.Booking
+import pe.edu.upc.rent2go_kotlin.common.CounterpartyDto
+import pe.edu.upc.rent2go_kotlin.common.toDomain
 
 @Serializable
 data class BookingResponse(
@@ -30,7 +32,11 @@ data class BookingDto(
     val coveragePlan: String,
     val pickupPhotos: List<String>? = null,
     val returnPhotos: List<String>? = null,
-    val damageReport: String? = null
+    val damageReport: String? = null,
+    // TS18/US60 — additive; absent on older cached responses (ignoreUnknownKeys handles new
+    // unexpected fields, defaults here handle the reverse: an old response missing this field).
+    val renter: CounterpartyDto? = null,
+    val owner: CounterpartyDto? = null
 )
 
 @Serializable
@@ -66,7 +72,9 @@ fun BookingDto.toDomain(): Booking {
         coveragePlan = coveragePlan,
         pickupPhotos = pickupPhotos ?: emptyList(),
         returnPhotos = returnPhotos ?: emptyList(),
-        damageReport = damageReport
+        damageReport = damageReport,
+        renter = renter.toDomain(renterId, "Arrendatario #$renterId"),
+        owner = owner.toDomain(ownerId, "Propietario #$ownerId")
     )
 }
 

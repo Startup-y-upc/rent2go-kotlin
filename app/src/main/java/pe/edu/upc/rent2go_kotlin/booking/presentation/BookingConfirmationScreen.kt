@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.PaymentSheetResult
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
@@ -53,6 +56,32 @@ fun BookingConfirmationScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     var showSuccessDialog by remember { mutableStateOf(false) }
+
+    // US58/TS16 — presents Stripe's PaymentSheet once the ViewModel has a real client secret
+    // from the backend's PaymentIntent; the sheet's own result (success/decline/cancel) is the
+    // only thing allowed to mark the payment complete, not merely creating the intent.
+    val paymentSheet = rememberPaymentSheet { result ->
+        viewModel.onPaymentSheetResult(
+            when (result) {
+                is PaymentSheetResult.Completed -> PaymentSheetOutcome.Completed
+                is PaymentSheetResult.Canceled -> PaymentSheetOutcome.Canceled
+                is PaymentSheetResult.Failed -> PaymentSheetOutcome.Failed(
+                    result.error.localizedMessage ?: result.error.message ?: "tarjeta rechazada"
+                )
+            }
+        )
+    }
+
+    LaunchedEffect(viewModel.paymentSheetRequest) {
+        val request = viewModel.paymentSheetRequest
+        if (request is PaymentSheetRequest.Ready) {
+            paymentSheet.presentWithPaymentIntent(
+                request.clientSecret,
+                PaymentSheet.Configuration(merchantDisplayName = "Rent2Go")
+            )
+            viewModel.onPaymentSheetLaunched()
+        }
+    }
 
     LaunchedEffect(carId) {
         viewModel.loadVehicle(carId)

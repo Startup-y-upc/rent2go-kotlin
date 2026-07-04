@@ -16,6 +16,15 @@ import pe.edu.upc.rent2go_kotlin.common.SessionManager
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
+/**
+ * US58/TS16 — client secret returned by the backend's PaymentIntent, exposed to the Composable
+ * so it can present Stripe's Android PaymentSheet (which requires an Activity-scoped launcher
+ * that only the Composable/Activity can host, not the ViewModel).
+ */
+sealed class PaymentSheetRequest {
+    data class Ready(val clientSecret: String, val reservationCode: String) : PaymentSheetRequest()
+}
+
 class BookingConfirmationViewModel(
     private val bookingRepository: BookingRepository,
     private val vehicleRepository: VehicleRepository,
@@ -50,6 +59,14 @@ class BookingConfirmationViewModel(
         private set
     var isSuccess by mutableStateOf(false)
         private set
+
+    // US58/TS16 — when set, the Composable must present Stripe's PaymentSheet for this
+    // client secret. Cleared once the sheet has been launched (see onPaymentSheetLaunched()).
+    var paymentSheetRequest by mutableStateOf<PaymentSheetRequest?>(null)
+        private set
+
+    private var pendingReservationId: Int? = null
+    private var onSuccessCallback: (() -> Unit)? = null
 
     // US15 (Renter, read-only) — availability of the selected date range.
     // Populated by checkAvailability(); does not let the renter create/modify
@@ -149,6 +166,13 @@ class BookingConfirmationViewModel(
         }
     }
 
+    /**
+     * US58/TS16 — creates the reservation, then a real Stripe PaymentIntent against it, and
+     * asks the Composable to present PaymentSheet via [paymentSheetRequest]. isSuccess is only
+     * set once the Composable reports back a genuine Stripe confirmation
+     * (see [onPaymentSheetResult]) — creating the booking/intent alone is no longer treated as
+     * a completed payment.
+     */
     fun confirmAndPayBooking(onSuccess: () -> Unit) {
         val currentVehicle = vehicle ?: return
         val renterId = SessionManager.getUserId()
@@ -161,6 +185,7 @@ class BookingConfirmationViewModel(
             return
         }
 
+        onSuccessCallback = onSuccess
         viewModelScope.launch {
             isSubmitting = true
             errorMessage = null
@@ -178,13 +203,53 @@ class BookingConfirmationViewModel(
                     pickupPhotos = emptyList(),
                     returnPhotos = emptyList()
                 )
-                bookingRepository.createBooking(request)
-                isSuccess = true
-                onSuccess()
+                val booking = bookingRepository.createBooking(request)
+                pendingReservationId = booking.id
+
+                val intent = paymentsRepository.createPaymentIntent(
+                    reservationId = booking.id,
+                    amountCents = Math.round(totalAmount * 100).toInt()
+                )
+                if (intent.clientSecret.isBlank()) {
+                    errorMessage = "La reserva ${booking.reservationCode} se creó, pero el cobro no pudo iniciarse."
+                    isSubmitting = false
+                    return@launch
+                }
+                // isSubmitting stays true while the PaymentSheet is up; cleared in
+                // onPaymentSheetResult() once Stripe reports the outcome.
+                paymentSheetRequest = PaymentSheetRequest.Ready(intent.clientSecret, booking.reservationCode)
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Error al procesar la reserva"
-            } finally {
                 isSubmitting = false
+            }
+        }
+    }
+
+    /** Called by the Composable once it has launched PaymentSheet for [paymentSheetRequest]. */
+    fun onPaymentSheetLaunched() {
+        paymentSheetRequest = null
+    }
+
+    /**
+     * US58 3-scenario handling: success -> isSuccess; declined/error -> visible error, retry
+     * allowed (reservation already exists); user closed the sheet -> reservation stays pending,
+     * not marked paid or failed, distinct message from a real decline.
+     */
+    fun onPaymentSheetResult(result: PaymentSheetOutcome) {
+        isSubmitting = false
+        val reservationCode = pendingReservationId?.toString() ?: ""
+        when (result) {
+            is PaymentSheetOutcome.Completed -> {
+                isSuccess = true
+                onSuccessCallback?.invoke()
+            }
+            is PaymentSheetOutcome.Canceled -> {
+                errorMessage = "Pago cancelado. La reserva #$reservationCode quedó pendiente de pago; " +
+                    "puedes reintentarlo desde \"Mis reservas\"."
+            }
+            is PaymentSheetOutcome.Failed -> {
+                errorMessage = "La reserva #$reservationCode se creó, pero el cobro falló: ${result.message} " +
+                    "Revisa \"Mis reservas\" para reintentar el pago."
             }
         }
     }
@@ -192,4 +257,11 @@ class BookingConfirmationViewModel(
     fun clearError() {
         errorMessage = null
     }
+}
+
+/** Mirrors Stripe's PaymentSheetResult without leaking the SDK type into the ViewModel API. */
+sealed class PaymentSheetOutcome {
+    object Completed : PaymentSheetOutcome()
+    object Canceled : PaymentSheetOutcome()
+    data class Failed(val message: String) : PaymentSheetOutcome()
 }

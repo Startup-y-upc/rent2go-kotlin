@@ -48,7 +48,16 @@ fun ChatDetailScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = viewModel.conversationSubject ?: userName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            // TS18/US60 — real counterparty name once the conversation loads;
+                            // falls back to the nav-time placeholder ("Conversación") only
+                            // during the brief initial load, never to a raw ID.
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = viewModel.counterpartyName ?: userName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                if (viewModel.counterpartyKycVerified) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(Icons.Default.Verified, contentDescription = "Verificado", modifier = Modifier.size(14.dp), tint = PrimaryCyan)
+                                }
+                            }
                         }
                     }
                 },

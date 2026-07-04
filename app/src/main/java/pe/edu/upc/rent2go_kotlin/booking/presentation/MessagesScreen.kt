@@ -113,7 +113,17 @@ fun ConversationItem(conversation: Conversation, onClick: () -> Unit) {
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = conversation.subject ?: "Conversación #${conversation.id}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+            // TS18/US60 — real counterparty name instead of the free-text subject / raw
+            // conversation ID fallback. Perspective-aware: shows the *other* party.
+            val isCurrentUserOwner = pe.edu.upc.rent2go_kotlin.common.SessionManager.getUserId() == conversation.ownerId
+            val counterparty = if (isCurrentUserOwner) conversation.renter else conversation.owner
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = counterparty.fullName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+                if (counterparty.kycVerified) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.Verified, contentDescription = "Verificado", modifier = Modifier.size(13.dp), tint = Color(0xFF00E5FF))
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.DirectionsCar, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Gray)
                 Spacer(modifier = Modifier.width(4.dp))

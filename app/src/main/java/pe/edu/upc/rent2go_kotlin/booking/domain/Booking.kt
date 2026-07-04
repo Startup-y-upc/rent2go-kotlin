@@ -1,5 +1,7 @@
 package pe.edu.upc.rent2go_kotlin.booking.domain
 
+import pe.edu.upc.rent2go_kotlin.common.Counterparty
+
 data class Booking(
     val id: Int,
     val reservationCode: String,
@@ -17,5 +19,9 @@ data class Booking(
     val coveragePlan: String,
     val pickupPhotos: List<String>,
     val returnPhotos: List<String>,
-    val damageReport: String?
+    val damageReport: String?,
+    // TS18/US60 — always populated (falls back to "Usuario sin nombre registrado" +
+    // the raw ID label if the backend hasn't sent the nested object yet).
+    val renter: Counterparty,
+    val owner: Counterparty
 )

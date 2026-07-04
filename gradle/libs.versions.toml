@@ -20,6 +20,7 @@ ksp = "2.2.10-1.0.31"
 mapsCompose = "6.4.1"
 googleMaps = "19.0.0"
 secretsPlugin = "2.0.1"
+stripeAndroid = "20.52.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -50,6 +51,7 @@ hilt-android = { group = "google.dagger", name = "hilt-android", version.ref = "
 hilt-compiler = { group = "google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+stripe-android = { group = "com.stripe", name = "stripe-android", version.ref = "stripeAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -21,9 +21,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.PaymentSheetResult
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.DarkBlue
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
@@ -56,6 +60,33 @@ fun BookingDetailScreen(
     )
 ) {
     val scrollState = rememberScrollState()
+
+    // Bugfix (reportado por Renter): reutiliza el mismo contrato PaymentSheetRequest/
+    // PaymentSheetOutcome de BookingConfirmationScreen para presentar Stripe PaymentSheet
+    // al reintentar el pago de una reserva PENDING, en vez de duplicar la lógica de sheet.
+    val paymentSheet = rememberPaymentSheet { result ->
+        viewModel.onPaymentSheetResult(
+            when (result) {
+                is PaymentSheetResult.Completed -> PaymentSheetOutcome.Completed
+                is PaymentSheetResult.Canceled -> PaymentSheetOutcome.Canceled
+                is PaymentSheetResult.Failed -> PaymentSheetOutcome.Failed(
+                    result.error.localizedMessage ?: result.error.message ?: "tarjeta rechazada"
+                )
+            },
+            bookingId
+        )
+    }
+
+    LaunchedEffect(viewModel.paymentSheetRequest) {
+        val request = viewModel.paymentSheetRequest
+        if (request is PaymentSheetRequest.Ready) {
+            paymentSheet.presentWithPaymentIntent(
+                request.clientSecret,
+                PaymentSheet.Configuration(merchantDisplayName = "Rent2Go")
+            )
+            viewModel.onPaymentSheetLaunched()
+        }
+    }
 
     LaunchedEffect(bookingId) {
         viewModel.loadBookingDetail(bookingId)
@@ -233,6 +264,17 @@ fun BookingDetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
+                        // ── Bugfix: Retry Payment (only when reservation is PENDING, i.e.
+                        // created but payment not yet confirmed by Stripe's webhook) ──
+                        if (booking.status == "PENDING") {
+                            BookingDetailPaymentRetryCard(
+                                isProcessing = viewModel.isProcessingPayment,
+                                errorMessage = viewModel.paymentErrorMessage,
+                                onRetryClick = { viewModel.retryPayment() }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
                         // ── US41/US43 (Renter) — Rating & Dispute entry points ──
                         BookingDetailActionsCard(
                             status = booking.status,
@@ -331,11 +373,21 @@ private fun BookingDetailVehicleCard(
                             tint = Color.DarkGray
                         )
                         Spacer(modifier = Modifier.width(4.dp))
+                        // TS18/US60 — real owner name (+ KYC badge) instead of a raw ID.
                         Text(
-                            "Propietario #${vehicle.ownerId}",
+                            booking.owner.fullName,
                             fontSize = 13.sp,
                             color = Color.DarkGray
                         )
+                        if (booking.owner.kycVerified) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Verified,
+                                contentDescription = "Verificado",
+                                modifier = Modifier.size(14.dp),
+                                tint = PrimaryCyan
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -600,6 +652,48 @@ private fun BookingDetailDamageCard(damageReport: String) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(damageReport, fontSize = 13.sp, color = Color.DarkGray)
+        }
+    }
+}
+
+@Composable
+private fun BookingDetailPaymentRetryCard(
+    isProcessing: Boolean,
+    errorMessage: String?,
+    onRetryClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White.copy(alpha = 0.8f),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Esta reserva aún no tiene un pago confirmado",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Color.Black
+            )
+            if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(errorMessage, fontSize = 12.sp, color = Color(0xFFF56C6C))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onRetryClick,
+                enabled = !isProcessing,
+                modifier = Modifier.fillMaxWidth().height(48.dp).testTag("retry_payment_button"),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
+            ) {
+                if (isProcessing) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                } else {
+                    Icon(Icons.Default.Payment, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Pagar ahora", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
         }
     }
 }

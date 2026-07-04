@@ -13,11 +13,18 @@ data class VehicleFilters(
     val maxPrice: Double? = null,
     val seats: Int? = null,
     val transmission: String? = null,
-    val fuelType: String? = null
+    val fuelType: String? = null,
+    // TS19 — geo-radius search; all three must be set together (mirrors SearchCriteria.hasRadius()).
+    val centerLatitude: Double? = null,
+    val centerLongitude: Double? = null,
+    val radiusKm: Double? = null
 ) {
     val isEmpty: Boolean
         get() = minPrice == null && maxPrice == null && seats == null &&
-            transmission == null && fuelType == null
+            transmission == null && fuelType == null && !hasRadius
+
+    val hasRadius: Boolean
+        get() = centerLatitude != null && centerLongitude != null && radiusKm != null
 }
 
 interface VehicleRepository {

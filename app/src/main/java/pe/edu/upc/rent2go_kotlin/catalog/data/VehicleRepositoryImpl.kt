@@ -19,7 +19,10 @@ class VehicleRepositoryImpl(
             maxPrice = filters.maxPrice,
             seats = filters.seats,
             transmission = filters.transmission,
-            fuelType = filters.fuelType
+            fuelType = filters.fuelType,
+            centerLatitude = filters.centerLatitude,
+            centerLongitude = filters.centerLongitude,
+            radiusKm = filters.radiusKm
         )
         response.content.forEach { dto ->
             vehicleCache[dto.id] = dto.toDomain()
