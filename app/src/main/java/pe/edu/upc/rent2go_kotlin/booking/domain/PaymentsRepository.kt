@@ -10,4 +10,14 @@ interface PaymentsRepository {
      * PaymentSheet confirms it.
      */
     suspend fun createPaymentIntent(reservationId: Int, amountCents: Int, currency: String = "usd"): PaymentIntentResult
+
+    /**
+     * Bugfix (US58 follow-up): forces the backend to re-check [reservationId]'s PaymentIntent
+     * against Stripe and apply the confirm/mark-paid transition if it already succeeded. Must be
+     * called after a successful PaymentSheet confirmation and before re-reading the reservation,
+     * because Stripe's webhook can lag behind the client-side confirmation and leave the
+     * reservation observed as PENDING even though the charge succeeded. Failures are non-fatal —
+     * the webhook remains the source of truth and will eventually apply the same transition.
+     */
+    suspend fun syncPayment(reservationId: Int)
 }

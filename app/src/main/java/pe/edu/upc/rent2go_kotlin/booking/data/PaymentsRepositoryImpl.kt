@@ -55,4 +55,21 @@ class PaymentsRepositoryImpl(
         val detailSuffix = if (!errorDetail.isNullOrBlank()) ": $errorDetail" else ""
         throw Exception("No se pudo iniciar el cobro (HTTP ${response.code()})$detailSuffix")
     }
+
+    /**
+     * Bugfix (US58 follow-up): non-fatal by design. This is a defensive fallback for a webhook
+     * race, not the source of truth — if it fails (network blip, Stripe API hiccup) the webhook
+     * will still eventually confirm the reservation on its own, so callers must not surface this
+     * as a user-facing payment error.
+     */
+    override suspend fun syncPayment(reservationId: Int) {
+        try {
+            val response = api.syncPayment(reservationId)
+            if (!response.isSuccessful) {
+                Log.w("PaymentsRepository", "syncPayment failed: HTTP ${response.code()} for reservationId=$reservationId")
+            }
+        } catch (e: Exception) {
+            Log.w("PaymentsRepository", "syncPayment error for reservationId=$reservationId: ${e.message}")
+        }
+    }
 }

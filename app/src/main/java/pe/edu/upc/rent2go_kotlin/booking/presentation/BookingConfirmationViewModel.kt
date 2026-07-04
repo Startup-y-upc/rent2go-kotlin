@@ -234,20 +234,35 @@ class BookingConfirmationViewModel(
      * US58 3-scenario handling: success -> isSuccess; declined/error -> visible error, retry
      * allowed (reservation already exists); user closed the sheet -> reservation stays pending,
      * not marked paid or failed, distinct message from a real decline.
+     *
+     * Bugfix (US58 follow-up): on success, force-syncs the reservation's payment status with
+     * Stripe BEFORE reporting success. Stripe's `payment_intent.succeeded` webhook is async and
+     * can arrive after PaymentSheet already confirmed the charge client-side — without this sync,
+     * the reservation the caller reads right after `onSuccessCallback` fires can still be PENDING,
+     * showing a stale "pay now" prompt even though the charge succeeded.
      */
     fun onPaymentSheetResult(result: PaymentSheetOutcome) {
-        isSubmitting = false
         val reservationCode = pendingReservationId?.toString() ?: ""
         when (result) {
             is PaymentSheetOutcome.Completed -> {
-                isSuccess = true
-                onSuccessCallback?.invoke()
+                val reservationId = pendingReservationId
+                viewModelScope.launch {
+                    if (reservationId != null) {
+                        paymentsRepository.syncPayment(reservationId)
+                    }
+                    isSubmitting = false
+                    isSuccess = true
+                    onSuccessCallback?.invoke()
+                }
+                return
             }
             is PaymentSheetOutcome.Canceled -> {
+                isSubmitting = false
                 errorMessage = "Pago cancelado. La reserva #$reservationCode quedó pendiente de pago; " +
                     "puedes reintentarlo desde \"Mis reservas\"."
             }
             is PaymentSheetOutcome.Failed -> {
+                isSubmitting = false
                 errorMessage = "La reserva #$reservationCode se creó, pero el cobro falló: ${result.message} " +
                     "Revisa \"Mis reservas\" para reintentar el pago."
             }

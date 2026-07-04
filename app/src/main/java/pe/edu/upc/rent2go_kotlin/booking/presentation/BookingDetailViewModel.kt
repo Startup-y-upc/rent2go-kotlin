@@ -109,12 +109,21 @@ class BookingDetailViewModel(
      * Mismos 3 desenlaces que US58: éxito -> refresca la reserva desde el backend para reflejar
      * el nuevo estado (CONFIRMED tras el webhook de Stripe); rechazo/error -> mensaje visible,
      * permite reintentar de nuevo; hoja cerrada sin completar -> sin cambio de estado.
+     *
+     * Bugfix (US58 follow-up): éxito ahora fuerza un sync del pago contra Stripe (POST
+     * .../reservations/{id}/sync) ANTES de refrescar la reserva. El webhook de
+     * `payment_intent.succeeded` es asíncrono y puede llegar después de que PaymentSheet ya
+     * confirmó el cobro del lado del cliente — sin este sync, loadBookingDetail() podía leer la
+     * reserva todavía en PENDING y mostrar el prompt de "pagar ahora" pese al cobro exitoso.
      */
     fun onPaymentSheetResult(result: PaymentSheetOutcome, bookingId: Int) {
         when (result) {
             is PaymentSheetOutcome.Completed -> {
-                isProcessingPayment = false
-                loadBookingDetail(bookingId)
+                viewModelScope.launch {
+                    paymentsRepository.syncPayment(bookingId)
+                    isProcessingPayment = false
+                    loadBookingDetail(bookingId)
+                }
             }
             is PaymentSheetOutcome.Canceled -> {
                 isProcessingPayment = false
