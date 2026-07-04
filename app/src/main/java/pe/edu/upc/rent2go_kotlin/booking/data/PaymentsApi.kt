@@ -16,12 +16,17 @@ data class CoveragePlanResponse(
     val dailyRateUSD: Double
 )
 
-/** Cuerpo exacto de POST /api/v1/payments/create-intent (CreateIntentRequest del backend). */
+/** Cuerpo exacto de POST /api/v1/payments/create-intent (CreateIntentRequest del backend).
+ * currency NO tiene valor por defecto: kotlinx.serialization omite del JSON los campos
+ * que quedan en su valor por defecto (salvo encodeDefaults=true en el Json compartido),
+ * por lo que un default aquí desaparecería silenciosamente del body y el backend
+ * (@NotBlank) lo rechazaría como null con "Currency is required" — bug reportado y
+ * rastreado exactamente a este comportamiento. */
 @Serializable
 data class CreateIntentRequest(
     val reservationId: Int,
     val amountCents: Int,
-    val currency: String = "usd"
+    val currency: String
 )
 
 /** Respuesta exacta de POST /api/v1/payments/create-intent (CreateIntentResponse del backend):

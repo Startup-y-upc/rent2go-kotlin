@@ -25,6 +25,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.stripe.android.paymentsheet.PaymentSheet
 import com.stripe.android.paymentsheet.PaymentSheetResult
 import com.stripe.android.paymentsheet.rememberPaymentSheet
@@ -221,6 +229,16 @@ fun BookingDetailScreen(
                         BookingDetailLocationsCard(booking = booking)
 
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        // ── Issue 5: vehicle pickup coordinates map preview, so the renter can
+                        // see exactly where to meet the owner before doing so. Vehicle.location
+                        // above (Ubicaciones card) is a free-text address; this adds the actual
+                        // lat/lng when the vehicle has them, mirroring ExploreScreen.kt's
+                        // GoogleMap usage (same maps.compose dependency, read-only here). ──
+                        if (vehicle?.latitude != null && vehicle.longitude != null) {
+                            BookingDetailMapCard(latitude = vehicle.latitude, longitude = vehicle.longitude)
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
 
                         // ── Coverage Card ──
                         BookingDetailCoverageCard(booking = booking)
@@ -482,6 +500,57 @@ private fun BookingDetailLocationsCard(booking: pe.edu.upc.rent2go_kotlin.bookin
                 label = "Devolución",
                 value = booking.returnLocation
             )
+        }
+    }
+}
+
+/**
+ * Issue 5 — read-only map preview of the vehicle's registered pickup coordinates, so the renter
+ * can see where to go before meeting the owner. Reuses the same maps.compose GoogleMap/Marker
+ * pattern already proven in ExploreScreen.kt (same dependency, no new API key/library needed);
+ * disables gestures/UI controls here since this is a preview, not an interactive picker.
+ */
+@Composable
+private fun BookingDetailMapCard(latitude: Double, longitude: Double) {
+    val vehicleLatLng = LatLng(latitude, longitude)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(vehicleLatLng, 14f)
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White.copy(alpha = 0.8f),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp), tint = PrimaryCyan)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Ubicación del vehículo", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState,
+                    properties = MapProperties(isMyLocationEnabled = false),
+                    uiSettings = MapUiSettings(
+                        zoomControlsEnabled = false,
+                        scrollGesturesEnabled = false,
+                        zoomGesturesEnabled = false,
+                        rotationGesturesEnabled = false,
+                        tiltGesturesEnabled = false,
+                        myLocationButtonEnabled = false
+                    )
+                ) {
+                    Marker(state = MarkerState(position = vehicleLatLng))
+                }
+            }
         }
     }
 }
