@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.google.maps.secrets)
 }
 
 android {
@@ -56,9 +55,8 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.kotlinx.serialization.json)
 
-    // Maps
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.maps)
+    // Maps — OSMDroid (OpenStreetMap): no API key required, unlike Google Maps.
+    implementation(libs.osmdroid.android)
 
     // Payments (US58/TS16) — Stripe test-mode PaymentSheet confirmation
     implementation(libs.stripe.android)

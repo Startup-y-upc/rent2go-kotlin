@@ -26,14 +26,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
+import pe.edu.upc.rent2go_kotlin.common.ui.map.MapLatLng
+import pe.edu.upc.rent2go_kotlin.common.ui.map.MapMarker
+import pe.edu.upc.rent2go_kotlin.common.ui.map.OsmMapView
+import pe.edu.upc.rent2go_kotlin.common.ui.map.rememberMapCameraState
 import com.stripe.android.paymentsheet.PaymentSheet
 import com.stripe.android.paymentsheet.PaymentSheetResult
 import com.stripe.android.paymentsheet.rememberPaymentSheet
@@ -499,16 +495,20 @@ private fun BookingDetailLocationsCard(booking: pe.edu.upc.rent2go_kotlin.bookin
 
 /**
  * Issue 5 — read-only map preview of the vehicle's registered pickup coordinates, so the renter
- * can see where to go before meeting the owner. Reuses the same maps.compose GoogleMap/Marker
- * pattern already proven in ExploreScreen.kt (same dependency, no new API key/library needed);
- * disables gestures/UI controls here since this is a preview, not an interactive picker.
+ * can see where to go before meeting the owner.
+ *
+ * TASK 4 follow-up (2026-07-06): migrated from Google Maps Compose (maps-compose +
+ * play-services-maps) to OSMDroid. Root cause of the original blank-map bug was
+ * confirmed to be exclusively the placeholder MAPS_API_KEY in local.properties (no
+ * real key existed anywhere in the repo, CI, or env). Rather than depend on Google
+ * Cloud credentials again, this now renders real OpenStreetMap tiles with zero API
+ * key required — see pe.edu.upc.rent2go_kotlin.common.ui.map.OsmMapView.
+ * Gestures are disabled here since this is a static preview, not an interactive map.
  */
 @Composable
 private fun BookingDetailMapCard(latitude: Double, longitude: Double) {
-    val vehicleLatLng = LatLng(latitude, longitude)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(vehicleLatLng, 14f)
-    }
+    val vehicleLatLng = MapLatLng(latitude, longitude)
+    val cameraState = rememberMapCameraState(initialCenter = vehicleLatLng, initialZoom = 15.0)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White.copy(alpha = 0.8f),
@@ -528,36 +528,13 @@ private fun BookingDetailMapCard(latitude: Double, longitude: Double) {
                     .height(140.dp)
                     .clip(RoundedCornerShape(8.dp))
             ) {
-                // TASK 4 diagnosis (2026-07-05): if this map renders blank showing only the
-                // Google logo + zoom/attribution controls (no tiles, no marker pin visible),
-                // that is the classic symptom of an invalid/unauthorized/restricted
-                // com.google.android.geo.API_KEY, NOT a bug in this composable.
-                // Findings:
-                //  - AndroidManifest.xml meta-data value is "${MAPS_API_KEY}" (placeholder,
-                //    resolved by the secrets-gradle-plugin from local.properties).
-                //  - local.properties currently has MAPS_API_KEY=YOUR_API_KEY_HERE — a
-                //    placeholder, not a real key. Maps will render blank until a real,
-                //    unrestricted-for-dev (or correctly SHA1+package restricted) Android Maps
-                //    SDK key is supplied by whoever owns the Google Cloud project.
-                //  - play-services-maps version = 19.0.0, maps-compose version = 6.4.1
-                //    (see gradle/libs.versions.toml lines 20-21) — both current, not the cause.
-                //  - Do NOT fetch/generate a new key here; this is a config/ops task for
-                //    whoever manages the Google Cloud console project.
-                GoogleMap(
+                OsmMapView(
                     modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    properties = MapProperties(isMyLocationEnabled = false),
-                    uiSettings = MapUiSettings(
-                        zoomControlsEnabled = false,
-                        scrollGesturesEnabled = false,
-                        zoomGesturesEnabled = false,
-                        rotationGesturesEnabled = false,
-                        tiltGesturesEnabled = false,
-                        myLocationButtonEnabled = false
-                    )
-                ) {
-                    Marker(state = MarkerState(position = vehicleLatLng))
-                }
+                    cameraState = cameraState,
+                    markers = listOf(MapMarker(position = vehicleLatLng)),
+                    gesturesEnabled = false,
+                    showZoomControls = false
+                )
             }
         }
     }
