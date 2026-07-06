@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -133,7 +134,7 @@ fun BottomNavItem(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(x = 6.dp, y = (-4).dp)
-                            .size(14.dp)
+                            .defaultMinSize(minWidth = 14.dp, minHeight = 14.dp)
                             .background(PrimaryCyan, shape = androidx.compose.foundation.shape.CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -141,7 +142,9 @@ fun BottomNavItem(
                             text = if (badgeCount > 9) "9+" else badgeCount.toString(),
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 2.dp)
                         )
                     }
                 }

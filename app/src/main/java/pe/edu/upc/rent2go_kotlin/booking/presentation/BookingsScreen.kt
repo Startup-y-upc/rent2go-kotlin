@@ -187,7 +187,11 @@ fun BookingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 140.dp)
         ) {
-            if (state.isLoading) {
+            // Task 5 fix: PullToRefreshBox already shows its own spinner while
+            // state.isLoading is true (e.g. during pull-to-refresh on a non-empty list).
+            // Only show this full-screen inline loader for the *initial* load, when there
+            // is nothing on screen yet — otherwise both spinners would render at once.
+            if (state.isLoading && state.bookings.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(50.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = PrimaryCyan)

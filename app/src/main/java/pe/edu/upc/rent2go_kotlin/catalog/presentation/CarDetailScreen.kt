@@ -459,47 +459,30 @@ fun SpecItem(
  */
 @Composable
 fun OwnerSummarySection(loading: Boolean, owner: Counterparty?) {
-    Surface(
-        color = Color.White.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            if (loading) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(color = PrimaryCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Cargando propietario...", fontSize = 13.sp, color = Color.Gray)
-                }
-                return@Column
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = owner?.fullName ?: "Propietario",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Black
-                )
-                if (owner?.kycVerified == true) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        Icons.Default.Verified,
-                        contentDescription = "Verificado",
-                        modifier = Modifier.size(16.dp),
-                        tint = PrimaryCyan
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Task 3 restructure: the card holds ONLY the owner's name. Verification
+        // badges/chips live outside it, in a separate row below.
+        Surface(
+            color = Color.White.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (loading) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(color = PrimaryCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Cargando propietario...", fontSize = 13.sp, color = Color.Gray)
+                    }
+                } else {
+                    Text(
+                        text = owner?.fullName ?: "Propietario",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            HorizontalDivider(color = Color.Black.copy(alpha = 0.08f))
-            VerificationItem(label = "DNI verificado", isVerified = owner?.dniVerified == true)
-            VerificationItem(label = "Carnet validado", isVerified = owner?.licenseVerified == true)
-            // Teléfono: CounterpartyResource deliberately does not expose phoneVerified
-            // (out of this endpoint's minimal PII-safe scope, BRD-2026-07-05 §9.4) — shown
-            // here in its explicit unverified state rather than omitted, per the original
-            // spec's three-item layout.
-            VerificationItem(label = "Teléfono", isVerified = false)
         }
     }
 }

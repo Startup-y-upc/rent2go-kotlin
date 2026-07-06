@@ -258,26 +258,6 @@ fun BookingDetailScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // ── Pickup Photos ──
-                        if (booking.pickupPhotos.isNotEmpty()) {
-                            BookingDetailPhotosCard(
-                                title = "Fotos de Recogida",
-                                icon = Icons.Default.AddAPhoto,
-                                photos = booking.pickupPhotos
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
-                        // ── Return Photos ──
-                        if (booking.returnPhotos.isNotEmpty()) {
-                            BookingDetailPhotosCard(
-                                title = "Fotos de Devolución",
-                                icon = Icons.Default.PhotoLibrary,
-                                photos = booking.returnPhotos
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
                         // ── Damage Report ──
                         if (!booking.damageReport.isNullOrBlank()) {
                             BookingDetailDamageCard(damageReport = booking.damageReport)
@@ -390,61 +370,42 @@ private fun BookingDetailVehicleCard(
                         )
                     }
                     Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Phase 8 (item 7) — owner's real profile photo when available,
-                        // falling back to the generic account icon.
-                        if (!booking.owner.profileImageUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = booking.owner.profileImageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp).clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                Icons.Default.AccountCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = Color.DarkGray
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        // TS18/US60 — real owner name (+ verification badges) instead of a raw ID.
-                        Text(
-                            booking.owner.fullName,
-                            fontSize = 13.sp,
-                            color = Color.DarkGray
-                        )
-                        // Phase 8 (item 7) — DNI/license badges alongside the existing KYC badge,
-                        // per CounterpartyResource's dni_verified/license_verified split.
-                        if (booking.owner.kycVerified) {
+                    // TS18/US60 — owner name shown in its own card, verification badges
+                    // rendered separately below it (Task 3 restructure).
+                    Surface(
+                        color = Color.LightGray.copy(alpha = 0.25f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Phase 8 (item 7) — owner's real profile photo when available,
+                            // falling back to the generic account icon.
+                            if (!booking.owner.profileImageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = booking.owner.profileImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp).clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.DarkGray
+                                )
+                            }
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.Verified,
-                                contentDescription = "KYC verificado",
-                                modifier = Modifier.size(14.dp),
-                                tint = PrimaryCyan
-                            )
-                        }
-                        if (booking.owner.dniVerified) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.Badge,
-                                contentDescription = "DNI verificado",
-                                modifier = Modifier.size(14.dp),
-                                tint = PrimaryCyan
-                            )
-                        }
-                        if (booking.owner.licenseVerified) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.DirectionsCar,
-                                contentDescription = "Licencia verificada",
-                                modifier = Modifier.size(14.dp),
-                                tint = PrimaryCyan
+                            Text(
+                                booking.owner.fullName,
+                                fontSize = 13.sp,
+                                color = Color.DarkGray
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -573,6 +534,21 @@ private fun BookingDetailMapCard(latitude: Double, longitude: Double) {
                     .height(140.dp)
                     .clip(RoundedCornerShape(8.dp))
             ) {
+                // TASK 4 diagnosis (2026-07-05): if this map renders blank showing only the
+                // Google logo + zoom/attribution controls (no tiles, no marker pin visible),
+                // that is the classic symptom of an invalid/unauthorized/restricted
+                // com.google.android.geo.API_KEY, NOT a bug in this composable.
+                // Findings:
+                //  - AndroidManifest.xml meta-data value is "${MAPS_API_KEY}" (placeholder,
+                //    resolved by the secrets-gradle-plugin from local.properties).
+                //  - local.properties currently has MAPS_API_KEY=YOUR_API_KEY_HERE — a
+                //    placeholder, not a real key. Maps will render blank until a real,
+                //    unrestricted-for-dev (or correctly SHA1+package restricted) Android Maps
+                //    SDK key is supplied by whoever owns the Google Cloud project.
+                //  - play-services-maps version = 19.0.0, maps-compose version = 6.4.1
+                //    (see gradle/libs.versions.toml lines 20-21) — both current, not the cause.
+                //  - Do NOT fetch/generate a new key here; this is a config/ops task for
+                //    whoever manages the Google Cloud console project.
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = cameraPositionState,
@@ -690,45 +666,6 @@ private fun BookingDetailAmountCard(booking: pe.edu.upc.rent2go_kotlin.booking.d
                 fontSize = 28.sp,
                 color = PrimaryCyan
             )
-        }
-    }
-}
-
-@Composable
-private fun BookingDetailPhotosCard(
-    title: String,
-    icon: ImageVector,
-    photos: List<String>
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White.copy(alpha = 0.8f),
-        shape = RoundedCornerShape(12.dp),
-        shadowElevation = 2.dp
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = PrimaryCyan)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                photos.forEach { photoUrl ->
-                    AsyncImage(
-                        model = photoUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
         }
     }
 }
