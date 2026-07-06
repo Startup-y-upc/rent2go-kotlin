@@ -311,12 +311,6 @@ private fun BookingDetailHeader(booking: pe.edu.upc.rent2go_kotlin.booking.domai
                 fontSize = 20.sp,
                 color = Color.Black
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "ID: ${booking.id}",
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
         }
         Surface(
             color = getStatusColor(booking.status).copy(alpha = 0.15f),
@@ -326,7 +320,7 @@ private fun BookingDetailHeader(booking: pe.edu.upc.rent2go_kotlin.booking.domai
                 text = getStatusText(booking.status),
                 color = getStatusColor(booking.status),
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
+                fontSize = 10.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }

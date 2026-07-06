@@ -23,6 +23,7 @@ object SessionManager {
     private const val KEY_KYC_DNI_FRONT = "kyc_dni_front"
     private const val KEY_KYC_DNI_BACK = "kyc_dni_back"
     private const val KEY_KYC_LICENSE = "kyc_license"
+    private const val KEY_MESSAGES_LAST_OPENED_AT = "messages_last_opened_at"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -135,5 +136,20 @@ object SessionManager {
 
     fun getKycLicense(): String {
         return getPrefs().getString(KEY_KYC_LICENSE, "") ?: ""
+    }
+
+    /// Marks "now" (epoch millis) as the last time the current user opened the
+    /// Messages screen. Used to derive a simple "new activity" dot from each
+    /// conversation's lastMessageAt without any extra network call — replaces
+    /// the previous N+1 unread-count fetch (one GET .../messages call per
+    /// conversation just to count unread items client-side).
+    fun markMessagesOpenedNow() {
+        getPrefs().edit().putLong(KEY_MESSAGES_LAST_OPENED_AT, System.currentTimeMillis()).apply()
+    }
+
+    /// Epoch millis of the last time Messages was opened, or null if never.
+    fun getMessagesLastOpenedAt(): Long? {
+        val value = getPrefs().getLong(KEY_MESSAGES_LAST_OPENED_AT, -1L)
+        return if (value == -1L) null else value
     }
 }

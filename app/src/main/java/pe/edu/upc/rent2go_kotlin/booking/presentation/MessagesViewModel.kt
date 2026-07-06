@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.SessionManager
 import pe.edu.upc.rent2go_kotlin.community.domain.Conversation
+import java.time.Instant
+import java.time.format.DateTimeParseException
 
 /** K1: reemplaza mockChats por conversaciones reales (CommunityTrustController). */
 class MessagesViewModel(
@@ -20,13 +22,6 @@ class MessagesViewModel(
     var isLoading by mutableStateOf(false)
         private set
     var errorMessage by mutableStateOf<String?>(null)
-        private set
-
-    // Phase 8 (item 6) — client-derived unread counts. The backend's ConversationResource
-    // has no unreadCount field (verified — see CommunityDto.kt's ConversationResponse), so
-    // this mirrors Flutter's existing client-side workaround: fetch each conversation's
-    // messages and count where senderId != myUserId && readAt == null.
-    var unreadCountsByConversation by mutableStateOf<Map<Int, Int>>(emptyMap())
         private set
 
     fun loadConversations() {
@@ -42,24 +37,37 @@ class MessagesViewModel(
                 val loaded = repository.getConversations(userId)
                 conversations = loaded
                 isLoading = false
-                loadUnreadCounts(userId, loaded)
+                // Entering the Messages screen means the user has now seen the
+                // latest activity — record it so the nav-bar dot clears without
+                // any extra call.
+                SessionManager.markMessagesOpenedNow()
             } catch (e: Exception) {
                 errorMessage = "No se pudieron cargar tus conversaciones"
                 isLoading = false
             }
         }
     }
+}
 
-    private suspend fun loadUnreadCounts(userId: Int, conversationsToCheck: List<Conversation>) {
-        val counts = mutableMapOf<Int, Int>()
-        for (conversation in conversationsToCheck) {
-            try {
-                val messages = repository.getMessages(conversation.id)
-                counts[conversation.id] = messages.count { it.senderId != userId && it.readAt == null }
-            } catch (e: Exception) {
-                // Non-fatal: leave this conversation's badge absent rather than blocking the list.
-            }
+/**
+ * Whether any conversation has activity newer than the last time the user
+ * opened Messages locally. Replaces the previous N+1 unread-count logic (one
+ * GET .../messages call per conversation just to count unread items client
+ * side): conversations already carry lastMessageAt for free, so this only
+ * needs a local timestamp comparison — no per-conversation message fetch, no
+ * numeric count, just "is there something new".
+ */
+fun hasRecentMessageActivity(conversations: List<Conversation>): Boolean {
+    val lastOpenedAt = SessionManager.getMessagesLastOpenedAt()
+        ?: return conversations.any { !it.lastMessageAt.isNullOrEmpty() }
+    return conversations.any { conversation ->
+        val iso = conversation.lastMessageAt
+        if (iso.isNullOrEmpty()) return@any false
+        val messageAtMillis = try {
+            Instant.parse(iso).toEpochMilli()
+        } catch (e: DateTimeParseException) {
+            return@any false
         }
-        unreadCountsByConversation = counts
+        messageAtMillis > lastOpenedAt
     }
 }

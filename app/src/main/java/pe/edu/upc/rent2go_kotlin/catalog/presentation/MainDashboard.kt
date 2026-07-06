@@ -12,8 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,14 +35,17 @@ fun MainDashboard(
 ) {
     var selectedScreen by remember { mutableStateOf("Explorar") }
 
-    // Phase 8 (item 6) — shared MessagesViewModel instance so the bottom-nav badge total
-    // reflects the same client-derived unread counts (per-conversation) used by
-    // MessagesScreen's own list badges, without a second independent fetch mechanism.
+    // Shared MessagesViewModel instance so the bottom-nav activity dot reflects
+    // the same conversations list used by MessagesScreen, without a second
+    // independent fetch mechanism. This is a simple dot (no numeric count) —
+    // see hasRecentMessageActivity for why: a numeric unread badge required an
+    // N+1 fetch of every conversation's full message history just to count
+    // unread items client-side.
     val messagesViewModel: MessagesViewModel = viewModel()
     LaunchedEffect(Unit) {
         messagesViewModel.loadConversations()
     }
-    val totalUnreadCount = messagesViewModel.unreadCountsByConversation.values.sum()
+    val hasMessageActivity = pe.edu.upc.rent2go_kotlin.booking.presentation.hasRecentMessageActivity(messagesViewModel.conversations)
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Content area
@@ -95,7 +96,7 @@ fun MainDashboard(
                     label = "Mensajes",
                     isSelected = selectedScreen == "Mensajes",
                     onClick = { selectedScreen = "Mensajes" },
-                    badgeCount = totalUnreadCount
+                    hasActivity = hasMessageActivity
                 )
                 BottomNavItem(
                     icon = Icons.Outlined.PersonOutline,
@@ -114,14 +115,15 @@ fun BottomNavItem(
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    badgeCount: Int = 0
+    hasActivity: Boolean = false
 ) {
     IconButton(
         onClick = onClick,
         modifier = Modifier.size(60.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Phase 8 (item 6) — client-derived unread badge on the bottom-nav icon.
+            // Simple activity dot on the bottom-nav icon (no numeric count —
+            // see hasRecentMessageActivity for rationale).
             Box {
                 Icon(
                     imageVector = icon,
@@ -129,24 +131,14 @@ fun BottomNavItem(
                     tint = if (isSelected) Color.Black else Color.Gray,
                     modifier = Modifier.size(24.dp)
                 )
-                if (badgeCount > 0) {
+                if (hasActivity) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(x = 6.dp, y = (-4).dp)
-                            .defaultMinSize(minWidth = 14.dp, minHeight = 14.dp)
-                            .background(PrimaryCyan, shape = androidx.compose.foundation.shape.CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (badgeCount > 9) "9+" else badgeCount.toString(),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 2.dp)
-                        )
-                    }
+                            .offset(x = 2.dp, y = (-1).dp)
+                            .size(8.dp)
+                            .background(PrimaryCyan, shape = androidx.compose.foundation.shape.CircleShape)
+                    )
                 }
             }
             Text(
