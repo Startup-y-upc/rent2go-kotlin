@@ -1,6 +1,7 @@
 package pe.edu.upc.rent2go_kotlin.catalog.domain
 
 import pe.edu.upc.rent2go_kotlin.catalog.data.VehicleResponse
+import pe.edu.upc.rent2go_kotlin.common.Counterparty
 
 /**
  * Filters accepted by [VehicleRepository.getVehicles], mirrored 1:1 from the
@@ -34,4 +35,12 @@ interface VehicleRepository {
         filters: VehicleFilters = VehicleFilters()
     ): VehicleResponse
     suspend fun getVehicleById(id: Int): Vehicle
+
+    /**
+     * US76 closure (Sprint 5 fixes remaining scope): the vehicle owner's identity/verification
+     * summary, resolvable before any reservation exists. Returns null if the vehicle is not
+     * found or the call otherwise fails — callers must show an explicit unverified/unavailable
+     * state, never crash.
+     */
+    suspend fun getVehicleOwnerSummary(id: Int): Counterparty?
 }

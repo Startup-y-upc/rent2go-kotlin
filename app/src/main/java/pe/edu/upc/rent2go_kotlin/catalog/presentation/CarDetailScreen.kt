@@ -22,9 +22,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import pe.edu.upc.rent2go_kotlin.catalog.domain.Vehicle
+import pe.edu.upc.rent2go_kotlin.common.Counterparty
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
+import pe.edu.upc.rent2go_kotlin.community.presentation.VerificationItem
 
 @Composable
 fun CarDetailScreen(
@@ -302,6 +304,24 @@ fun CarDetailScreen(
                             }
                         }
 
+                        // US76 closure (Sprint 5 fixes remaining scope): owner identity +
+                        // verification badges, resolvable pre-booking via
+                        // GET /api/v1/vehicles/{id}/owner-summary. Reuses VerificationItem
+                        // (ProfileScreen.kt) — the same composable already used for the
+                        // Sprint 5 color-fix work — rather than a new visual style.
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "PROPIETARIO",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OwnerSummarySection(
+                            loading = !state.ownerSummaryLoaded,
+                            owner = state.ownerSummary
+                        )
+
                         // K6: sección de reseñas/calificación — antes inexistente.
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
@@ -423,6 +443,64 @@ fun SpecItem(
         Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color.Black)
         Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         Text(text = label, fontSize = 12.sp, color = Color.Gray)
+    }
+}
+
+/**
+ * US76 closure (Sprint 5 fixes remaining scope): the vehicle owner's name/verification badges,
+ * resolvable BEFORE any reservation exists (previously only available post-booking via
+ * ReservationResource/ConversationResource's nested counterparty object).
+ *
+ * Loading/error/missing-data are all handled explicitly, per the BRD's fail-open requirement:
+ * - loading: shows a small inline spinner, not a blank space.
+ * - owner == null (vehicle-not-found, network error, or owner has no data on file): shows a
+ *   name-unavailable placeholder plus all three verification items in their unverified state —
+ *   never a crash.
+ */
+@Composable
+fun OwnerSummarySection(loading: Boolean, owner: Counterparty?) {
+    Surface(
+        color = Color.White.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (loading) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(color = PrimaryCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Cargando propietario...", fontSize = 13.sp, color = Color.Gray)
+                }
+                return@Column
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = owner?.fullName ?: "Propietario",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black
+                )
+                if (owner?.kycVerified == true) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.Verified,
+                        contentDescription = "Verificado",
+                        modifier = Modifier.size(16.dp),
+                        tint = PrimaryCyan
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(color = Color.Black.copy(alpha = 0.08f))
+            VerificationItem(label = "DNI verificado", isVerified = owner?.dniVerified == true)
+            VerificationItem(label = "Carnet validado", isVerified = owner?.licenseVerified == true)
+            // Teléfono: CounterpartyResource deliberately does not expose phoneVerified
+            // (out of this endpoint's minimal PII-safe scope, BRD-2026-07-05 §9.4) — shown
+            // here in its explicit unverified state rather than omitted, per the original
+            // spec's three-item layout.
+            VerificationItem(label = "Teléfono", isVerified = false)
+        }
     }
 }
 

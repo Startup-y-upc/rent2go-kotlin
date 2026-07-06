@@ -9,6 +9,7 @@ import pe.edu.upc.rent2go_kotlin.booking.domain.BookingRepository
 import pe.edu.upc.rent2go_kotlin.booking.domain.FavoritesRepository
 import pe.edu.upc.rent2go_kotlin.catalog.domain.Vehicle
 import pe.edu.upc.rent2go_kotlin.catalog.domain.VehicleRepository
+import pe.edu.upc.rent2go_kotlin.common.Counterparty
 import pe.edu.upc.rent2go_kotlin.common.SessionManager
 import pe.edu.upc.rent2go_kotlin.community.domain.CommunityRepository
 import pe.edu.upc.rent2go_kotlin.community.domain.VehicleRating
@@ -55,6 +56,23 @@ class VehicleDetailViewModel(
             }
             loadFavoriteState(id)
             loadRatingAndReviews(id)
+            loadOwnerSummary(id)
+        }
+    }
+
+    /**
+     * US76 closure (Sprint 5 fixes remaining scope): owner name + verification badges,
+     * resolvable pre-booking via GET /api/v1/vehicles/{id}/owner-summary. Non-fatal by
+     * design (mirrors loadFavoriteState/loadRatingAndReviews) — a failed/absent owner
+     * summary must not block the rest of the vehicle detail screen; `ownerSummaryLoaded`
+     * lets the UI distinguish "still loading" from "loaded, owner has no verification data".
+     */
+    private suspend fun loadOwnerSummary(vehicleId: Int) {
+        try {
+            val owner = repository.getVehicleOwnerSummary(vehicleId)
+            _state.value = _state.value.copy(ownerSummary = owner, ownerSummaryLoaded = true)
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(ownerSummary = null, ownerSummaryLoaded = true)
         }
     }
 
@@ -109,5 +127,7 @@ data class VehicleDetailState(
     val occupiedUntil: String? = null,
     val isFavorite: Boolean = false,
     val rating: VehicleRating? = null,
-    val reviews: List<VehicleReview> = emptyList()
+    val reviews: List<VehicleReview> = emptyList(),
+    val ownerSummary: Counterparty? = null,
+    val ownerSummaryLoaded: Boolean = false
 )
