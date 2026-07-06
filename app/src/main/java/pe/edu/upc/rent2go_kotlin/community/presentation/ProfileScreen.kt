@@ -522,17 +522,28 @@ fun VerificationItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (isVerified) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
-            contentDescription = null,
-            tint = if (isVerified) PrimaryCyan else Color.Black,
-            modifier = Modifier.size(24.dp)
-        )
+        // Phase 9 — verification icon now sits inside a small circular badge
+        // (MaterialTheme.colorScheme.primaryContainer) instead of a bare icon,
+        // with tint/label colors theme-derived instead of hardcoded Color.Black.
+        Surface(
+            modifier = Modifier.size(32.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isVerified) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                    contentDescription = null,
+                    tint = if (isVerified) PrimaryCyan else MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = label,
             fontSize = 14.sp,
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
         if (isClickable) {

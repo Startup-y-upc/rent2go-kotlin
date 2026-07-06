@@ -41,10 +41,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 
-private val TermsDarkBg = Color(0xFF0D1B2A)
-private val TermsCyan = Color(0xFF00E5FF)
-private val TermsLinkColor = Color(0xFF0077B6)
-
 private sealed class TermsUiState {
     object Loading : TermsUiState()
     data class Success(val content: String) : TermsUiState()
@@ -145,38 +141,42 @@ private fun TermsBlockView(block: TermsBlock) {
             text = block.text,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = TermsDarkBg,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 16.dp)
         )
         is TermsBlock.Meta -> Text(
+            // Phase 9 — fixed white-on-white: this Meta block renders on the screen's
+            // default (light) background, not on TermsDarkBg, so Color.White was
+            // invisible. MaterialTheme.colorScheme.onSurfaceVariant reads correctly in
+            // both light and dark theme.
             text = inlineAnnotatedString(block.text),
             style = MaterialTheme.typography.bodySmall,
             fontStyle = FontStyle.Italic,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         is TermsBlock.Rule -> HorizontalDivider(
             modifier = Modifier.padding(vertical = 12.dp),
-            color = Color(0xFFD5DEE6)
+            color = MaterialTheme.colorScheme.outlineVariant
         )
         is TermsBlock.Heading -> Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 18.dp, bottom = 10.dp)
-                .background(TermsDarkBg, RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
         ) {
             Text(
                 text = block.text,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
             )
         }
         is TermsBlock.Paragraph -> Text(
             text = inlineAnnotatedString(block.text),
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black.copy(alpha = 0.87f),
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 10.dp)
         )
         is TermsBlock.Bullets -> Column(modifier = Modifier.padding(bottom = 8.dp)) {
@@ -184,14 +184,14 @@ private fun TermsBlockView(block: TermsBlock) {
                 Row(modifier = Modifier.padding(bottom = 6.dp)) {
                     Text(
                         text = "•",
-                        color = TermsDarkBg,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Text(
                         text = inlineAnnotatedString(item),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Black.copy(alpha = 0.87f)
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
@@ -206,7 +206,12 @@ private fun TermsBlockView(block: TermsBlock) {
  * dependency solely for two static contact links in a legal document is
  * disproportionate versus this project's existing minimal-dependency set.
  */
-private fun inlineAnnotatedString(text: String) = buildAnnotatedString {
+@Composable
+private fun inlineAnnotatedString(
+    text: String,
+    boldColor: Color = MaterialTheme.colorScheme.onBackground,
+    linkColor: Color = MaterialTheme.colorScheme.primary
+) = buildAnnotatedString {
     val pattern = Regex("\\*\\*(.+?)\\*\\*|\\[(.+?)]\\((.+?)\\)")
     var cursor = 0
     for (match in pattern.findAll(text)) {
@@ -216,12 +221,12 @@ private fun inlineAnnotatedString(text: String) = buildAnnotatedString {
         val bold = match.groupValues[1]
         val linkText = match.groupValues[2]
         if (bold.isNotEmpty()) {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = TermsDarkBg)) {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = boldColor)) {
                 append(bold)
             }
         } else if (linkText.isNotEmpty()) {
             withStyle(
-                SpanStyle(color = TermsLinkColor, textDecoration = TextDecoration.Underline)
+                SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)
             ) {
                 append(linkText)
             }

@@ -213,6 +213,9 @@ fun SetupNavGraph(navController: NavHostController) {
                 bookingId = bookingId,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onChatClick = { conversationId ->
+                    navController.navigate("chat_detail/$conversationId")
                 }
             )
         }

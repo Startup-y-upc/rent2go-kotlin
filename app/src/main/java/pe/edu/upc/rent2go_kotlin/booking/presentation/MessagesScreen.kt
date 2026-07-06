@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
+import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 import pe.edu.upc.rent2go_kotlin.community.domain.Conversation
 
 @Composable
@@ -84,7 +85,11 @@ fun MessagesScreen(
                     contentPadding = PaddingValues(bottom = 140.dp)
                 ) {
                     items(viewModel.conversations) { conversation ->
-                        ConversationItem(conversation = conversation, onClick = { onChatClick(conversation.id) })
+                        ConversationItem(
+                            conversation = conversation,
+                            unreadCount = viewModel.unreadCountsByConversation[conversation.id] ?: 0,
+                            onClick = { onChatClick(conversation.id) }
+                        )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     }
                 }
@@ -94,7 +99,7 @@ fun MessagesScreen(
 }
 
 @Composable
-fun ConversationItem(conversation: Conversation, onClick: () -> Unit) {
+fun ConversationItem(conversation: Conversation, unreadCount: Int = 0, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -102,12 +107,25 @@ fun ConversationItem(conversation: Conversation, onClick: () -> Unit) {
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.Top
     ) {
+        // Phase 8 (item 7) — counterparty's real profile photo when available, replacing
+        // the placeholder Person icon-only avatar.
+        val isCurrentUserOwnerForAvatar = pe.edu.upc.rent2go_kotlin.common.SessionManager.getUserId() == conversation.ownerId
+        val counterpartyForAvatar = if (isCurrentUserOwnerForAvatar) conversation.renter else conversation.owner
         Surface(
             modifier = Modifier.size(50.dp),
             shape = CircleShape,
             color = Color.LightGray
         ) {
-            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(8.dp))
+            if (!counterpartyForAvatar.profileImageUrl.isNullOrBlank()) {
+                coil.compose.AsyncImage(
+                    model = counterpartyForAvatar.profileImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            } else {
+                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(8.dp))
+            }
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -135,6 +153,25 @@ fun ConversationItem(conversation: Conversation, onClick: () -> Unit) {
                 color = Color.DarkGray,
                 maxLines = 1
             )
+        }
+
+        // Phase 8 (item 6) — client-derived unread badge (see MessagesViewModel).
+        if (unreadCount > 0) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                shape = CircleShape,
+                color = PrimaryCyan,
+                modifier = Modifier.size(22.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = if (unreadCount > 9) "9+" else unreadCount.toString(),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
         }
     }
 }

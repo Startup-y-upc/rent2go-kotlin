@@ -32,12 +32,14 @@ import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.CardLight
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.launch
 
 @Composable
 fun ExploreScreen(
@@ -64,6 +66,17 @@ fun ExploreScreen(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(lima, 11f)
     }
+    // Phase 7 — map fallback state. GoogleMap (maps-compose) does not expose a
+    // synchronous "render failed" callback for an invalid/missing/quota-exceeded
+    // API key, so this cannot be auto-detected from within this composable.
+    // What IS provided: a manual fallback UI + retry action the user can reach,
+    // and a key()-based remount on retry (a plain boolean flip would not force
+    // the underlying MapView to re-attempt creation). mapLoadFailed starts false
+    // (optimistic — the map is attempted first); wire a global "toggle" here if
+    // a future observable signal (e.g. a Maps SDK crash handler) becomes available.
+    var mapLoadFailed by remember { mutableStateOf(false) }
+    var mapRetryKey by remember { mutableStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
 
     val firstVehicleWithLocation = state.vehicles.firstOrNull { it.latitude != null && it.longitude != null }
     LaunchedEffect(firstVehicleWithLocation) {
@@ -162,40 +175,69 @@ fun ExploreScreen(
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(12.dp))
         ) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                onMapLongClick = { latLng -> radiusCenter = latLng }
-            ) {
-                state.vehicles.forEach { vehicle ->
-                    if (vehicle.latitude != null && vehicle.longitude != null) {
-                        Marker(
-                            state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
-                            title = "${vehicle.make} ${vehicle.model}",
-                            snippet = "S/ ${String.format("%.0f", vehicle.dailyPrice)}/día"
-                        )
+            if (mapLoadFailed) {
+                // Fallback: map failed to render (e.g. invalid/missing/quota-exceeded API
+                // key). Do not isolate/filter markers — this is a list-only fallback, the
+                // vehicle grid below is unaffected and still shows every vehicle.
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.DarkGray.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.LocationOff, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Mapa no disponible", color = Color.DarkGray, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = {
+                            mapLoadFailed = false
+                            mapRetryKey++
+                        }) {
+                            Text("Reintentar", color = PrimaryCyan)
+                        }
                     }
                 }
-                radiusCenter?.let { center ->
-                    Marker(
-                        state = MarkerState(position = center),
-                        title = "Buscar aquí",
-                        snippet = "Radio: ${radiusKm.toInt()} km"
-                    )
+            } else {
+                // key() forces a fresh GoogleMap/MapView instance on retry, since an
+                // invalid/missing/quota-exceeded API key surfaces as an exception thrown
+                // by the underlying Maps SDK view during map creation, not as a normal
+                // Compose recomposition — a plain state flip would not re-attempt creation.
+                key(mapRetryKey) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        onMapLongClick = { latLng -> radiusCenter = latLng }
+                    ) {
+                        state.vehicles.forEach { vehicle ->
+                            if (vehicle.latitude != null && vehicle.longitude != null) {
+                                Marker(
+                                    state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
+                                    title = "${vehicle.make} ${vehicle.model}",
+                                    snippet = "S/ ${String.format("%.0f", vehicle.dailyPrice)}/día"
+                                )
+                            }
+                        }
+                        radiusCenter?.let { center ->
+                            Marker(
+                                state = MarkerState(position = center),
+                                title = "Buscar aquí",
+                                snippet = "Radio: ${radiusKm.toInt()} km"
+                            )
+                        }
+                    }
                 }
-            }
-            if (radiusCenter == null) {
-                Surface(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp),
-                    color = Color.Black.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        "Mantén presionado el mapa para buscar por zona",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
+                if (radiusCenter == null) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp),
+                        color = Color.Black.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            "Mantén presionado el mapa para buscar por zona",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -281,7 +323,23 @@ fun ExploreScreen(
                 items(state.vehicles) { vehicle ->
                     VehicleCard(
                         vehicle = vehicle,
-                        onClick = { onCarClick(vehicle.id) }
+                        onClick = {
+                            // Phase 7 — recenter the map camera on the selected vehicle's
+                            // coordinates before navigating away. Does NOT hide/filter any
+                            // other marker — every vehicle marker stays visible, only the
+                            // camera moves.
+                            if (vehicle.latitude != null && vehicle.longitude != null) {
+                                coroutineScope.launch {
+                                    cameraPositionState.animate(
+                                        update = CameraUpdateFactory.newLatLngZoom(
+                                            LatLng(vehicle.latitude, vehicle.longitude),
+                                            15f
+                                        )
+                                    )
+                                }
+                            }
+                            onCarClick(vehicle.id)
+                        }
                     )
                 }
 
@@ -396,7 +454,7 @@ fun FilterSheet(
                 // wrap, small devices); without this it would previously overflow/clip.
                 .verticalScroll(rememberScrollState())
         ) {
-            Text("Filtrar vehículos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Text("Filtrar vehículos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(16.dp))
 
             FilterSectionLabel("Precio por día (S/)")
@@ -486,7 +544,7 @@ fun FilterSheet(
                         )
                     },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Aplicar")
                 }
@@ -497,12 +555,14 @@ fun FilterSheet(
 
 @Composable
 private fun FilterSectionLabel(text: String) {
-    Text(text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+    // Phase 9 (US77) — theme-derived instead of hardcoded Color.Black.
+    Text(text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
 }
 
 @Composable
 private fun FilterSectionDivider() {
-    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color.Black.copy(alpha = 0.08f))
+    // Phase 9 (US77) — theme-derived instead of hardcoded Color.Black.
+    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable

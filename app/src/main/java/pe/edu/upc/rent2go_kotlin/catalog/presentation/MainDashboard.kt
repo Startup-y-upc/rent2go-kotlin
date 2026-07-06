@@ -12,10 +12,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingsScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.MessagesScreen
+import pe.edu.upc.rent2go_kotlin.booking.presentation.MessagesViewModel
 import pe.edu.upc.rent2go_kotlin.iam.presentation.AuthViewModel
 import pe.edu.upc.rent2go_kotlin.community.presentation.ProfileScreen
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
@@ -33,12 +36,21 @@ fun MainDashboard(
 ) {
     var selectedScreen by remember { mutableStateOf("Explorar") }
 
+    // Phase 8 (item 6) — shared MessagesViewModel instance so the bottom-nav badge total
+    // reflects the same client-derived unread counts (per-conversation) used by
+    // MessagesScreen's own list badges, without a second independent fetch mechanism.
+    val messagesViewModel: MessagesViewModel = viewModel()
+    LaunchedEffect(Unit) {
+        messagesViewModel.loadConversations()
+    }
+    val totalUnreadCount = messagesViewModel.unreadCountsByConversation.values.sum()
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Content area
         when (selectedScreen) {
             "Explorar" -> ExploreScreen(onCarClick = onCarClick)
             "Reservas" -> BookingsScreen(onBookingClick = onBookingClick)
-            "Mensajes" -> MessagesScreen(onChatClick = onChatClick)
+            "Mensajes" -> MessagesScreen(onChatClick = onChatClick, viewModel = messagesViewModel)
             "Perfil" -> ProfileScreen(
                 authViewModel = authViewModel,
                 onLogoutClick = onLogoutClick,
@@ -81,7 +93,8 @@ fun MainDashboard(
                     icon = Icons.Outlined.ChatBubbleOutline,
                     label = "Mensajes",
                     isSelected = selectedScreen == "Mensajes",
-                    onClick = { selectedScreen = "Mensajes" }
+                    onClick = { selectedScreen = "Mensajes" },
+                    badgeCount = totalUnreadCount
                 )
                 BottomNavItem(
                     icon = Icons.Outlined.PersonOutline,
@@ -99,19 +112,40 @@ fun BottomNavItem(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    badgeCount: Int = 0
 ) {
     IconButton(
         onClick = onClick,
         modifier = Modifier.size(60.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isSelected) Color.Black else Color.Gray,
-                modifier = Modifier.size(24.dp)
-            )
+            // Phase 8 (item 6) — client-derived unread badge on the bottom-nav icon.
+            Box {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = if (isSelected) Color.Black else Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+                if (badgeCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 6.dp, y = (-4).dp)
+                            .size(14.dp)
+                            .background(PrimaryCyan, shape = androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (badgeCount > 9) "9+" else badgeCount.toString(),
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
             Text(
                 text = label,
                 fontSize = 10.sp,

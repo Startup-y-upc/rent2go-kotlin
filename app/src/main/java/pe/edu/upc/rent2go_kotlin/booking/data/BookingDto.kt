@@ -36,7 +36,10 @@ data class BookingDto(
     // TS18/US60 — additive; absent on older cached responses (ignoreUnknownKeys handles new
     // unexpected fields, defaults here handle the reverse: an old response missing this field).
     val renter: CounterpartyDto? = null,
-    val owner: CounterpartyDto? = null
+    val owner: CounterpartyDto? = null,
+    // Sprint 5 (US76/TS23) — additive; ReservationResource.java exposes the vehicle's
+    // catalog photo under this exact snake_case key (Vehicle.primaryImageUrl on backend).
+    val vehicle_image: String? = null
 )
 
 @Serializable
@@ -74,7 +77,8 @@ fun BookingDto.toDomain(): Booking {
         returnPhotos = returnPhotos ?: emptyList(),
         damageReport = damageReport,
         renter = renter.toDomain(renterId, "Arrendatario #$renterId"),
-        owner = owner.toDomain(ownerId, "Propietario #$ownerId")
+        owner = owner.toDomain(ownerId, "Propietario #$ownerId"),
+        vehicleImage = vehicle_image
     )
 }
 

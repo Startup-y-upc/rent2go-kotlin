@@ -9,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,8 +56,8 @@ fun RatingDialog(
             viewModel.resetState()
             onDismiss()
         },
-        containerColor = Color.White,
-        title = { Text("Califica tu experiencia", fontWeight = FontWeight.Bold, color = Color.Black) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text("Califica tu experiencia", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column {
                 Row(
@@ -69,7 +68,7 @@ fun RatingDialog(
                         Icon(
                             imageVector = if (star <= rating) Icons.Filled.Star else Icons.Filled.StarBorder,
                             contentDescription = "$star estrella${if (star != 1) "s" else ""}",
-                            tint = if (star <= rating) PrimaryCyan else Color.Gray,
+                            tint = if (star <= rating) PrimaryCyan else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .size(36.dp)
                                 .clickable { rating = star }
@@ -80,14 +79,14 @@ fun RatingDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Categoría", fontSize = 12.sp, color = Color.Gray)
+                Text("Categoría", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 Box {
                     OutlinedButton(
                         onClick = { categoryMenuExpanded = true },
                         modifier = Modifier.fillMaxWidth().testTag("rating_category_selector")
                     ) {
-                        Text(category.label, color = Color.Black)
+                        Text(category.label, color = MaterialTheme.colorScheme.onSurface)
                     }
                     DropdownMenu(
                         expanded = categoryMenuExpanded,
@@ -121,7 +120,7 @@ fun RatingDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = state.error,
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp,
                         modifier = Modifier.testTag("rating_error_text")
                     )
@@ -145,9 +144,9 @@ fun RatingDialog(
                 modifier = Modifier.testTag("rating_submit_button")
             ) {
                 if (state.isSubmitting) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                 } else {
-                    Text("Enviar reseña", color = Color.White)
+                    Text("Enviar reseña", color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         },
@@ -159,7 +158,7 @@ fun RatingDialog(
                 },
                 modifier = Modifier.testTag("rating_cancel_button")
             ) {
-                Text("Cancelar", color = Color.Black)
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurface)
             }
         }
     )

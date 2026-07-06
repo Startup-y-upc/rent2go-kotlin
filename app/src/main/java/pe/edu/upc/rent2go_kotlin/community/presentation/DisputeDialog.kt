@@ -4,14 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
-import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 
 /**
  * US41 (Renter) — dispute/report submission dialog for a reservation.
@@ -47,14 +45,14 @@ fun DisputeDialog(
             viewModel.resetState()
             onDismiss()
         },
-        containerColor = Color.White,
-        title = { Text("Reportar un problema", fontWeight = FontWeight.Bold, color = Color.Black) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text("Reportar un problema", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column {
                 Text(
                     text = "Cuéntanos qué ocurrió con esta reserva. Nuestro equipo revisará tu reporte.",
                     fontSize = 13.sp,
-                    color = Color.DarkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
@@ -70,7 +68,7 @@ fun DisputeDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = state.error,
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp,
                         modifier = Modifier.testTag("dispute_error_text")
                     )
@@ -81,13 +79,13 @@ fun DisputeDialog(
             Button(
                 onClick = { viewModel.submitDispute(reservationId, reason) {} },
                 enabled = !state.isSubmitting,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF56C6C)),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.testTag("dispute_submit_button")
             ) {
                 if (state.isSubmitting) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onError, modifier = Modifier.size(18.dp))
                 } else {
-                    Text("Enviar reporte", color = Color.White)
+                    Text("Enviar reporte", color = MaterialTheme.colorScheme.onError)
                 }
             }
         },
@@ -99,7 +97,7 @@ fun DisputeDialog(
                 },
                 modifier = Modifier.testTag("dispute_cancel_button")
             ) {
-                Text("Cancelar", color = Color.Black)
+                Text("Cancelar", color = MaterialTheme.colorScheme.onSurface)
             }
         }
     )

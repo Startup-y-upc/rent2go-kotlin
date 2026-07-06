@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +56,7 @@ import java.util.Locale
 fun BookingDetailScreen(
     bookingId: Int,
     onBackClick: () -> Unit,
+    onChatClick: (Int) -> Unit = {},
     viewModel: BookingDetailViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -294,10 +296,13 @@ fun BookingDetailScreen(
                         }
 
                         // ── US41/US43 (Renter) — Rating & Dispute entry points ──
+                        // Phase 8 (item 5) — chat entry point added alongside rate/report.
                         BookingDetailActionsCard(
                             status = booking.status,
                             onRateClick = { showRatingDialog = true },
-                            onReportClick = { showDisputeDialog = true }
+                            onReportClick = { showDisputeDialog = true },
+                            onChatClick = { viewModel.openChatForBooking { conversationId -> onChatClick(conversationId) } },
+                            isOpeningChat = viewModel.isOpeningChat
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -354,7 +359,9 @@ private fun BookingDetailVehicleCard(
     booking: pe.edu.upc.rent2go_kotlin.booking.domain.Booking
 ) {
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
-    val imageUrl = vehicle?.primaryImageUrl ?: ""
+    // Phase 8 (item 7) — fallback to the reservation's own vehicle_image when the vehicle
+    // lookup by ID hasn't resolved yet.
+    val imageUrl = vehicle?.primaryImageUrl ?: booking.vehicleImage ?: ""
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -384,24 +391,55 @@ private fun BookingDetailVehicleCard(
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.DarkGray
-                        )
+                        // Phase 8 (item 7) — owner's real profile photo when available,
+                        // falling back to the generic account icon.
+                        if (!booking.owner.profileImageUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = booking.owner.profileImageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp).clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.DarkGray
+                            )
+                        }
                         Spacer(modifier = Modifier.width(4.dp))
-                        // TS18/US60 — real owner name (+ KYC badge) instead of a raw ID.
+                        // TS18/US60 — real owner name (+ verification badges) instead of a raw ID.
                         Text(
                             booking.owner.fullName,
                             fontSize = 13.sp,
                             color = Color.DarkGray
                         )
+                        // Phase 8 (item 7) — DNI/license badges alongside the existing KYC badge,
+                        // per CounterpartyResource's dni_verified/license_verified split.
                         if (booking.owner.kycVerified) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 Icons.Default.Verified,
-                                contentDescription = "Verificado",
+                                contentDescription = "KYC verificado",
+                                modifier = Modifier.size(14.dp),
+                                tint = PrimaryCyan
+                            )
+                        }
+                        if (booking.owner.dniVerified) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Badge,
+                                contentDescription = "DNI verificado",
+                                modifier = Modifier.size(14.dp),
+                                tint = PrimaryCyan
+                            )
+                        }
+                        if (booking.owner.licenseVerified) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.DirectionsCar,
+                                contentDescription = "Licencia verificada",
                                 modifier = Modifier.size(14.dp),
                                 tint = PrimaryCyan
                             )
@@ -771,7 +809,9 @@ private fun BookingDetailPaymentRetryCard(
 private fun BookingDetailActionsCard(
     status: String,
     onRateClick: () -> Unit,
-    onReportClick: () -> Unit
+    onReportClick: () -> Unit,
+    onChatClick: () -> Unit = {},
+    isOpeningChat: Boolean = false
 ) {
     Spacer(modifier = Modifier.height(12.dp))
     Surface(
@@ -782,6 +822,21 @@ private fun BookingDetailActionsCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("¿Necesitas ayuda con esta reserva?", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+            Spacer(modifier = Modifier.height(12.dp))
+            // Phase 8 (item 5) — chat entry point for this reservation's counterparty.
+            OutlinedButton(
+                onClick = onChatClick,
+                enabled = !isOpeningChat,
+                modifier = Modifier.fillMaxWidth().testTag("chat_reservation_button")
+            ) {
+                if (isOpeningChat) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = PrimaryCyan)
+                } else {
+                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Enviar mensaje", color = PrimaryCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -23,5 +23,7 @@ data class Booking(
     // TS18/US60 — always populated (falls back to "Usuario sin nombre registrado" +
     // the raw ID label if the backend hasn't sent the nested object yet).
     val renter: Counterparty,
-    val owner: Counterparty
+    val owner: Counterparty,
+    // Sprint 5 (US76/TS23) — additive; null when the vehicle has no registered image.
+    val vehicleImage: String? = null
 )

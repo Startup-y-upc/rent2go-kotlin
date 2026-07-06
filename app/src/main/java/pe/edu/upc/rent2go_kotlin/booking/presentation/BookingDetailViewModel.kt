@@ -11,11 +11,14 @@ import pe.edu.upc.rent2go_kotlin.booking.domain.BookingRepository
 import pe.edu.upc.rent2go_kotlin.booking.domain.PaymentsRepository
 import pe.edu.upc.rent2go_kotlin.catalog.domain.Vehicle
 import pe.edu.upc.rent2go_kotlin.catalog.domain.VehicleRepository
+import pe.edu.upc.rent2go_kotlin.common.SessionManager
+import pe.edu.upc.rent2go_kotlin.community.domain.CommunityRepository
 
 class BookingDetailViewModel(
     private val bookingRepository: BookingRepository,
     private val vehicleRepository: VehicleRepository,
-    private val paymentsRepository: PaymentsRepository = pe.edu.upc.rent2go_kotlin.common.DependencyProvider.paymentsRepository
+    private val paymentsRepository: PaymentsRepository = pe.edu.upc.rent2go_kotlin.common.DependencyProvider.paymentsRepository,
+    private val communityRepository: CommunityRepository = pe.edu.upc.rent2go_kotlin.common.DependencyProvider.communityRepository
 ) : ViewModel() {
 
     var booking: Booking? by mutableStateOf(null)
@@ -138,5 +141,42 @@ class BookingDetailViewModel(
 
     fun clearPaymentError() {
         paymentErrorMessage = null
+    }
+
+    var isOpeningChat: Boolean by mutableStateOf(false)
+        private set
+
+    var chatError: String? by mutableStateOf(null)
+        private set
+
+    /**
+     * Phase 8 (item 5) — chat entry point from the booking detail screen. There is no
+     * "get-or-create" endpoint on the backend, so this mirrors MessagesScreen's existing
+     * flow: look up an existing conversation for this reservation first (getConversations
+     * filtered by reservationId), and only call startConversation if none exists yet.
+     */
+    fun openChatForBooking(onReady: (conversationId: Int) -> Unit) {
+        val current = booking ?: return
+        if (isOpeningChat) return
+        viewModelScope.launch {
+            isOpeningChat = true
+            chatError = null
+            try {
+                val userId = SessionManager.getUserId()
+                val existing = communityRepository.getConversations(userId)
+                    .firstOrNull { it.reservationId == current.id }
+                val conversationId = existing?.id ?: communityRepository.startConversation(
+                    ownerId = current.ownerId,
+                    renterId = current.renterId,
+                    vehicleId = current.vehicleId,
+                    reservationId = current.id
+                ).id
+                isOpeningChat = false
+                onReady(conversationId)
+            } catch (e: Exception) {
+                isOpeningChat = false
+                chatError = e.message ?: "No se pudo abrir el chat. Intenta nuevamente."
+            }
+        }
     }
 }

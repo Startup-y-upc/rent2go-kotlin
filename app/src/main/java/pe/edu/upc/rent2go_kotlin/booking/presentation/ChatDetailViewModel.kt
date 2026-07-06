@@ -43,6 +43,9 @@ class ChatDetailViewModel(
         private set
     var counterpartyKycVerified by mutableStateOf(false)
         private set
+    // Sprint 5 (US76/TS23, item 7) — counterparty's real profile photo for the chat header.
+    var counterpartyProfileImageUrl by mutableStateOf<String?>(null)
+        private set
 
     val currentUserId: Int get() = SessionManager.getUserId()
 
@@ -71,6 +74,7 @@ class ChatDetailViewModel(
                     val counterparty = if (isCurrentUserOwner) conversation.renter else conversation.owner
                     counterpartyName = counterparty.fullName
                     counterpartyKycVerified = counterparty.kycVerified
+                    counterpartyProfileImageUrl = counterparty.profileImageUrl
                 }
                 // Si no se recibió un reservationId por navegación, se resuelve
                 // consultando la conversación real (GET /conversations/{id}) —
