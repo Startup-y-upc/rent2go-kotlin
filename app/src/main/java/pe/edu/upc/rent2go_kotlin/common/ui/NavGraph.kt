@@ -19,6 +19,8 @@ import pe.edu.upc.rent2go_kotlin.catalog.presentation.CarDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.ChatDetailScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingConfirmationScreen
 import pe.edu.upc.rent2go_kotlin.booking.presentation.BookingDetailScreen
+import pe.edu.upc.rent2go_kotlin.community.presentation.TermsScreen
+import pe.edu.upc.rent2go_kotlin.notifications.presentation.NotificationsScreen
 
 @Composable
 fun SetupNavGraph(navController: NavHostController) {
@@ -120,8 +122,8 @@ fun SetupNavGraph(navController: NavHostController) {
                 onCarClick = { carId ->
                     navController.navigate("car_detail/$carId")
                 },
-                onChatClick = { userName ->
-                    navController.navigate("chat_detail/$userName")
+                onChatClick = { conversationId ->
+                    navController.navigate("chat_detail/$conversationId")
                 },
                 onLogoutClick = {
                     navController.navigate("login") {
@@ -133,16 +135,38 @@ fun SetupNavGraph(navController: NavHostController) {
                 },
                 onKycClick = {
                     navController.navigate("sign_up_validation?fromProfile=true")
+                },
+                onTermsClick = {
+                    navController.navigate("terms")
+                },
+                onNotificationsClick = {
+                    navController.navigate("notifications")
+                }
+            )
+        }
+        composable(route = "terms") {
+            TermsScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(route = "notifications") {
+            NotificationsScreen(
+                onBackClick = {
+                    navController.popBackStack()
                 }
             )
         }
         composable(
-            route = "chat_detail/{userName}",
-            arguments = listOf(navArgument("userName") { type = NavType.StringType })
+            route = "chat_detail/{conversationId}",
+            arguments = listOf(navArgument("conversationId") { type = NavType.IntType })
         ) { backStackEntry ->
-            val userName = backStackEntry.arguments?.getString("userName") ?: ""
+            val conversationId = backStackEntry.arguments?.getInt("conversationId") ?: 0
             ChatDetailScreen(
-                userName = userName,
+                conversationId = conversationId,
+                reservationId = null,
+                userName = "Conversación",
                 onBackClick = {
                     navController.popBackStack()
                 }
@@ -189,6 +213,9 @@ fun SetupNavGraph(navController: NavHostController) {
                 bookingId = bookingId,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onChatClick = { conversationId ->
+                    navController.navigate("chat_detail/$conversationId")
                 }
             )
         }

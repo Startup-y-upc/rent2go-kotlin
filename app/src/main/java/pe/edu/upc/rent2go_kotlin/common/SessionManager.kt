@@ -18,10 +18,12 @@ object SessionManager {
     private const val KEY_EMAIL_VERIFIED = "user_email_verified"
     private const val KEY_PHONE_VERIFIED = "user_phone_verified"
     private const val KEY_TWO_FACTOR_ENABLED = "user_two_factor_enabled"
+    private const val KEY_KYC_VERIFIED = "user_kyc_verified"
     private const val KEY_REMEMBER_ME = "remember_me"
     private const val KEY_KYC_DNI_FRONT = "kyc_dni_front"
     private const val KEY_KYC_DNI_BACK = "kyc_dni_back"
     private const val KEY_KYC_LICENSE = "kyc_license"
+    private const val KEY_MESSAGES_LAST_OPENED_AT = "messages_last_opened_at"
 
     private var sharedPreferences: SharedPreferences? = null
 
@@ -56,6 +58,7 @@ object SessionManager {
             putBoolean(KEY_EMAIL_VERIFIED, user.emailVerified)
             putBoolean(KEY_PHONE_VERIFIED, user.phoneVerified)
             putBoolean(KEY_TWO_FACTOR_ENABLED, user.twoFactorEnabled)
+            putBoolean(KEY_KYC_VERIFIED, user.kycVerified)
             apply()
         }
     }
@@ -73,6 +76,7 @@ object SessionManager {
             putBoolean(KEY_EMAIL_VERIFIED, user.emailVerified)
             putBoolean(KEY_PHONE_VERIFIED, user.phoneVerified)
             putBoolean(KEY_TWO_FACTOR_ENABLED, user.twoFactorEnabled)
+            putBoolean(KEY_KYC_VERIFIED, user.kycVerified)
             apply()
         }
     }
@@ -100,7 +104,8 @@ object SessionManager {
             status = getPrefs().getString(KEY_STATUS, "") ?: "",
             emailVerified = getPrefs().getBoolean(KEY_EMAIL_VERIFIED, false),
             phoneVerified = getPrefs().getBoolean(KEY_PHONE_VERIFIED, false),
-            twoFactorEnabled = getPrefs().getBoolean(KEY_TWO_FACTOR_ENABLED, false)
+            twoFactorEnabled = getPrefs().getBoolean(KEY_TWO_FACTOR_ENABLED, false),
+            kycVerified = getPrefs().getBoolean(KEY_KYC_VERIFIED, false)
         )
     }
 
@@ -131,5 +136,20 @@ object SessionManager {
 
     fun getKycLicense(): String {
         return getPrefs().getString(KEY_KYC_LICENSE, "") ?: ""
+    }
+
+    /// Marks "now" (epoch millis) as the last time the current user opened the
+    /// Messages screen. Used to derive a simple "new activity" dot from each
+    /// conversation's lastMessageAt without any extra network call — replaces
+    /// the previous N+1 unread-count fetch (one GET .../messages call per
+    /// conversation just to count unread items client-side).
+    fun markMessagesOpenedNow() {
+        getPrefs().edit().putLong(KEY_MESSAGES_LAST_OPENED_AT, System.currentTimeMillis()).apply()
+    }
+
+    /// Epoch millis of the last time Messages was opened, or null if never.
+    fun getMessagesLastOpenedAt(): Long? {
+        val value = getPrefs().getLong(KEY_MESSAGES_LAST_OPENED_AT, -1L)
+        return if (value == -1L) null else value
     }
 }

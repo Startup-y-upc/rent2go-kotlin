@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.TextGray
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingsScreen(
     onBookingClick: (Int) -> Unit = {},
@@ -174,12 +176,22 @@ fun BookingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Phase 7 — pull-to-refresh wired to the existing loadBookings() reload path.
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = { viewModel.loadBookings() },
+            modifier = Modifier.fillMaxSize()
+        ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 140.dp)
         ) {
-            if (state.isLoading) {
+            // Task 5 fix: PullToRefreshBox already shows its own spinner while
+            // state.isLoading is true (e.g. during pull-to-refresh on a non-empty list).
+            // Only show this full-screen inline loader for the *initial* load, when there
+            // is nothing on screen yet — otherwise both spinners would render at once.
+            if (state.isLoading && state.bookings.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(50.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = PrimaryCyan)
@@ -243,6 +255,7 @@ fun BookingsScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -250,7 +263,10 @@ fun BookingsScreen(
 fun NextBookingCard(booking: Booking, vehicle: Vehicle?, onBookingClick: (Int) -> Unit = {}, onCancelClick: () -> Unit) {
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
     val yearAndCategory = if (vehicle != null) "${vehicle.categoryName} · ${vehicle.year}" else ""
-    val imageUrl = vehicle?.primaryImageUrl ?: ""
+    // Phase 8 (item 7) — vehicle.primaryImageUrl first (full catalog lookup), falling back
+    // to the reservation's own vehicle_image (ReservationResource) when the vehicle lookup
+    // by ID hasn't resolved (e.g. still loading), instead of showing no thumbnail at all.
+    val imageUrl = vehicle?.primaryImageUrl ?: booking.vehicleImage ?: ""
     val location = booking.pickupLocation
 
     Surface(
@@ -348,7 +364,8 @@ fun PreviousBookingItem(booking: Booking, vehicle: Vehicle?, onBookingClick: (In
     val carName = if (vehicle != null) "${vehicle.make} ${vehicle.model}" else "Vehículo #${booking.vehicleId}"
     val dates = "${booking.startDate} — ${booking.endDate}"
     val price = "S/ ${String.format("%.2f", booking.totalAmount)}"
-    val imageUrl = vehicle?.primaryImageUrl ?: ""
+    // Phase 8 (item 7) — same fallback as NextBookingCard.
+    val imageUrl = vehicle?.primaryImageUrl ?: booking.vehicleImage ?: ""
     
     Surface(
         color = Color.White.copy(alpha = 0.4f),

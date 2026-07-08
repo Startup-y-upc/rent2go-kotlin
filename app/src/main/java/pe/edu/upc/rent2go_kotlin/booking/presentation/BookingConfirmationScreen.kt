@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.PaymentSheetResult
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
@@ -53,6 +56,32 @@ fun BookingConfirmationScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     var showSuccessDialog by remember { mutableStateOf(false) }
+
+    // US58/TS16 — presents Stripe's PaymentSheet once the ViewModel has a real client secret
+    // from the backend's PaymentIntent; the sheet's own result (success/decline/cancel) is the
+    // only thing allowed to mark the payment complete, not merely creating the intent.
+    val paymentSheet = rememberPaymentSheet { result ->
+        viewModel.onPaymentSheetResult(
+            when (result) {
+                is PaymentSheetResult.Completed -> PaymentSheetOutcome.Completed
+                is PaymentSheetResult.Canceled -> PaymentSheetOutcome.Canceled
+                is PaymentSheetResult.Failed -> PaymentSheetOutcome.Failed(
+                    result.error.localizedMessage ?: result.error.message ?: "tarjeta rechazada"
+                )
+            }
+        )
+    }
+
+    LaunchedEffect(viewModel.paymentSheetRequest) {
+        val request = viewModel.paymentSheetRequest
+        if (request is PaymentSheetRequest.Ready) {
+            paymentSheet.presentWithPaymentIntent(
+                request.clientSecret,
+                PaymentSheet.Configuration(merchantDisplayName = "Rent2Go")
+            )
+            viewModel.onPaymentSheetLaunched()
+        }
+    }
 
     LaunchedEffect(carId) {
         viewModel.loadVehicle(carId)
@@ -171,6 +200,7 @@ fun BookingConfirmationScreen(
                                                 if (viewModel.endDate.isBefore(date)) {
                                                     viewModel.endDate = date.plusDays(1)
                                                 }
+                                                viewModel.checkAvailability()
                                             }
                                         }
                                 ) {
@@ -187,6 +217,7 @@ fun BookingConfirmationScreen(
                                                 if (date.isAfter(viewModel.startDate) || date.isEqual(viewModel.startDate)) {
                                                     viewModel.endDate = date
                                                 }
+                                                viewModel.checkAvailability()
                                             }
                                         }
                                 ) {
@@ -199,35 +230,78 @@ fun BookingConfirmationScreen(
                             }
                         }
 
+                        // US15 (Renter, read-only) — availability feedback for the selected range.
+                        Spacer(modifier = Modifier.height(12.dp))
+                        when {
+                            viewModel.isCheckingAvailability -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PrimaryCyan)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Verificando disponibilidad…", fontSize = 12.sp, color = Color.Gray)
+                                }
+                            }
+                            !viewModel.isRangeAvailable -> {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color(0xFFFFF3E0),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFE65100), modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                "El vehículo ya está reservado en parte de este rango de fechas.",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFFE65100),
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                        if (viewModel.blockedRanges.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            viewModel.blockedRanges.forEach { (start, end) ->
+                                                Text("Ocupado: $start a $end", fontSize = 11.sp, color = Color(0xFFE65100))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            viewModel.availabilityError != null -> {
+                                Text(
+                                    "No se pudo verificar la disponibilidad. Puedes continuar, se validará al confirmar.",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(24.dp))
                         Text("Cobertura", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Coverage Options
-                        CoverageOption(
-                            title = "Esencial",
-                            subtitle = "Franquicia 1.500 €",
-                            price = "S/ 0/día",
-                            isSelected = viewModel.coveragePlan == "ESSENTIAL",
-                            onClick = { viewModel.coveragePlan = "ESSENTIAL" }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        CoverageOption(
-                            title = "Plus",
-                            tag = "Popular",
-                            subtitle = "Sin franquicia · Recomendada",
-                            price = "S/ 8/día",
-                            isSelected = viewModel.coveragePlan == "PLUS",
-                            onClick = { viewModel.coveragePlan = "PLUS" }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        CoverageOption(
-                            title = "Premium",
-                            subtitle = "Sin franquicia + asistencia ilimitada",
-                            price = "S/ 14/día",
-                            isSelected = viewModel.coveragePlan == "PREMIUM",
-                            onClick = { viewModel.coveragePlan = "PREMIUM" }
-                        )
+                        // K8: opciones reales desde GET /payments/coverage-plans
+                        // (BASIC/STANDARD/PREMIUM/NONE), ya no códigos/precios inventados.
+                        if (viewModel.isLoadingCoveragePlans) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = PrimaryCyan)
+                            }
+                        } else if (viewModel.coveragePlans.isEmpty()) {
+                            Text("No se pudieron cargar los planes de cobertura.", fontSize = 12.sp, color = Color.Red)
+                        } else {
+                            viewModel.coveragePlans.forEachIndexed { index, plan ->
+                                CoverageOption(
+                                    title = plan.name,
+                                    tag = if (plan.code == "STANDARD") "Popular" else null,
+                                    subtitle = plan.description,
+                                    price = if (plan.dailyRateUsd == 0.0) "S/ 0" else "S/ ${String.format("%.2f", plan.dailyRateUsd)}/día",
+                                    isSelected = viewModel.coveragePlan == plan.code,
+                                    onClick = { viewModel.coveragePlan = plan.code }
+                                )
+                                if (index < viewModel.coveragePlans.lastIndex) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -239,8 +313,9 @@ fun BookingConfirmationScreen(
                             shadowElevation = 2.dp
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
+                                val coverageName = viewModel.coveragePlans.firstOrNull { it.code == viewModel.coveragePlan }?.name ?: viewModel.coveragePlan
                                 PriceRow("Renta (S/ ${String.format("%.0f", vehicle.dailyPrice)} × ${viewModel.rentalDays} días)", "S/ ${String.format("%.2f", viewModel.subtotal)}")
-                                PriceRow("Cobertura ${viewModel.coveragePlan.lowercase().replaceFirstChar { it.uppercase() }}", "S/ ${String.format("%.2f", viewModel.coverageTotal)}")
+                                PriceRow("Cobertura $coverageName", "S/ ${String.format("%.2f", viewModel.coverageTotal)}")
                                 PriceRow("Tasa de servicio (5%)", "S/ ${String.format("%.2f", viewModel.serviceFee)}")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
@@ -271,13 +346,15 @@ fun BookingConfirmationScreen(
                                     showSuccessDialog = true
                                 }
                             },
-                            enabled = !viewModel.isSubmitting,
+                            enabled = !viewModel.isSubmitting && viewModel.isRangeAvailable,
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (viewModel.isSubmitting) {
                                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            } else if (!viewModel.isRangeAvailable) {
+                                Text("Fechas no disponibles", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             } else {
                                 Text("Pagar y reservar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }

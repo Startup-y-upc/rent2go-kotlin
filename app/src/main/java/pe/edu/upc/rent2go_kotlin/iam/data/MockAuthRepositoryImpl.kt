@@ -53,5 +53,26 @@ class MockAuthRepositoryImpl : AuthRepository {
         delay(1000)
         return true
     }
+
+    override suspend fun updateProfile(fullName: String?, phone: String?): User {
+        delay(500)
+        return User(
+            1,
+            fullName ?: "Usuario de Prueba",
+            "usuario@example.com",
+            phone ?: "999888777",
+            "RENTER"
+        )
+    }
+
+    override suspend fun resendVerificationEmail(): Boolean {
+        delay(500)
+        return true
+    }
+
+    override suspend fun verifyEmail(userId: Int, token: String): Boolean {
+        delay(500)
+        return token.isNotBlank()
+    }
 }
 

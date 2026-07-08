@@ -22,4 +22,8 @@ class BookingRepositoryImpl(
     override suspend fun cancelBooking(bookingId: Int, renterId: Int, reason: String): Booking {
         return api.cancelReservation(bookingId, CancelBookingRequest(renterId, reason)).toDomain()
     }
+
+    override suspend fun checkAvailability(vehicleId: Int, startDate: String, endDate: String): AvailabilityCheckResponse {
+        return api.checkAvailability(vehicleId = vehicleId, startDate = startDate, endDate = endDate)
+    }
 }

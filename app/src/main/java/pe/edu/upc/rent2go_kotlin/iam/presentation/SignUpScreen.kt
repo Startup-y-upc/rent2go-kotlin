@@ -65,8 +65,10 @@ fun SignUpScreen(
         Spacer(modifier = Modifier.height(32.dp))
         
         // Steps Indicator
+        // Phase 9 (US77) — was a hardcoded fixed dark-navy Color(0xFF1B2336); now theme-derived
+        // so it adapts if this screen's surrounding theme ever changes from its current dark look.
         Surface(
-            color = Color(0xFF1B2336),
+            color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -223,12 +225,12 @@ fun InputField(label: String, value: String, onValueChange: (String) -> Unit, is
                 }
             } else null,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF1B2336),
-                unfocusedContainerColor = Color(0xFF1B2336),
+                focusedContainerColor = MaterialTheme.colorScheme.secondary,
+                unfocusedContainerColor = MaterialTheme.colorScheme.secondary,
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                focusedTextColor = MaterialTheme.colorScheme.onSecondary,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSecondary
             ),
             shape = RoundedCornerShape(8.dp)
         )

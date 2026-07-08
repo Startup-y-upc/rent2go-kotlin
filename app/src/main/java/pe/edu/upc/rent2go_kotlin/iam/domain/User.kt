@@ -11,5 +11,8 @@ data class User(
     val status: String = "",
     val emailVerified: Boolean = false,
     val phoneVerified: Boolean = false,
-    val twoFactorEnabled: Boolean = false
+    val twoFactorEnabled: Boolean = false,
+    // K3: campo real del backend (/auth/me, login, register), ya no se infiere
+    // desde un heurístico local (hasLocalKyc / status string).
+    val kycVerified: Boolean = false
 )

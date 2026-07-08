@@ -13,9 +13,12 @@ class ProfileViewModel(
     private val repository: CommunityRepository = DependencyProvider.communityRepository
 ) : ViewModel() {
 
-    var completedTrips by mutableStateOf(0)
-    var averageRating by mutableStateOf(5.0)
-    var acceptanceRate by mutableStateOf(100.0)
+    // K4: ya no se inicializa con 5.0/100.0 (parecía un puntaje perfecto real).
+    // null significa "aún no cargado o falló" — la UI debe mostrar un estado de
+    // carga/error explícito, no un valor fabricado.
+    var completedTrips by mutableStateOf<Int?>(null)
+    var averageRating by mutableStateOf<Double?>(null)
+    var acceptanceRate by mutableStateOf<Double?>(null)
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
 

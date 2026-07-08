@@ -45,6 +45,26 @@ class AuthViewModel(
     var isAuthSuccess by mutableStateOf(false)
     var isKycSuccess by mutableStateOf(false)
 
+    // US09 — Edit profile form state
+    var isEditingProfile by mutableStateOf(false)
+    var isSavingProfile by mutableStateOf(false)
+    var editFullName by mutableStateOf("")
+    var editPhone by mutableStateOf("")
+    var profileUpdateError by mutableStateOf<String?>(null)
+
+    // Email verification resend state — parallel to isSavingProfile/profileUpdateError above.
+    var isResendingVerification by mutableStateOf(false)
+    var resendVerificationMessage by mutableStateOf<String?>(null)
+    var resendVerificationError by mutableStateOf<String?>(null)
+
+    // Fix 2 — paste-code verification dialog state (ProfileScreen). The user
+    // pastes the token they received by email into verificationCodeInput and
+    // taps "Verificar", which calls POST /auth/verify with {userId, token}.
+    var isVerificationDialogOpen by mutableStateOf(false)
+    var verificationCodeInput by mutableStateOf("")
+    var isVerifyingCode by mutableStateOf(false)
+    var verifyCodeError by mutableStateOf<String?>(null)
+
     init {
         // Load stored KYC URLs if any
         kycDniFrontUrl = pe.edu.upc.rent2go_kotlin.common.SessionManager.getKycDniFront()
@@ -168,6 +188,138 @@ class AuthViewModel(
         pe.edu.upc.rent2go_kotlin.common.SessionManager.updateUser(updatedUser)
     }
 
+
+    /** US09 — opens the edit form pre-filled with the current profile values. */
+    fun startEditingProfile() {
+        editFullName = currentUser?.fullName ?: ""
+        editPhone = currentUser?.phone ?: ""
+        profileUpdateError = null
+        isEditingProfile = true
+    }
+
+    fun cancelEditingProfile() {
+        isEditingProfile = false
+        profileUpdateError = null
+    }
+
+    /**
+     * US09 AC2 — rejects an invalid phone (non-numeric characters) before
+     * calling the backend, matching the Gherkin AC verbatim.
+     */
+    fun saveProfile(onSuccess: () -> Unit) {
+        val trimmedName = editFullName.trim()
+        val trimmedPhone = editPhone.trim()
+
+        if (trimmedName.isBlank()) {
+            profileUpdateError = "El nombre no puede estar vacío."
+            return
+        }
+        if (trimmedPhone.isNotBlank() && !trimmedPhone.all { it.isDigit() }) {
+            profileUpdateError = "El teléfono solo puede contener números."
+            return
+        }
+
+        viewModelScope.launch {
+            isSavingProfile = true
+            profileUpdateError = null
+            try {
+                val updatedUser = repository.updateProfile(
+                    fullName = trimmedName,
+                    phone = trimmedPhone.ifBlank { null }
+                )
+                currentUser = updatedUser
+                isEditingProfile = false
+                onSuccess()
+            } catch (e: Exception) {
+                profileUpdateError = e.message ?: "Error al actualizar el perfil"
+            } finally {
+                isSavingProfile = false
+            }
+        }
+    }
+
+    /**
+     * Calls POST /auth/verify/resend and shows loading/success/error feedback,
+     * mirroring the resend/refresh pattern added to the Flutter profile screens
+     * in the same session — avoids a silent no-op (the same class of bug fixed
+     * for the photo-upload issue).
+     */
+    fun resendVerificationEmail() {
+        viewModelScope.launch {
+            isResendingVerification = true
+            resendVerificationMessage = null
+            resendVerificationError = null
+            try {
+                repository.resendVerificationEmail()
+                resendVerificationMessage = "Correo de verificación reenviado"
+            } catch (e: Exception) {
+                resendVerificationError = e.message ?: "No se pudo reenviar el correo de verificación"
+            } finally {
+                isResendingVerification = false
+            }
+        }
+    }
+
+    /** Re-fetches /auth/me to refresh the verification badges shown in ProfileScreen. */
+    fun refreshCurrentUser() {
+        viewModelScope.launch {
+            try {
+                currentUser = repository.getMe()
+            } catch (_: Exception) {
+                // non-fatal: keep showing the last known state
+            }
+        }
+    }
+
+    fun startEnteringVerificationCode() {
+        verificationCodeInput = ""
+        verifyCodeError = null
+        isVerificationDialogOpen = true
+    }
+
+    fun cancelEnteringVerificationCode() {
+        isVerificationDialogOpen = false
+        verificationCodeInput = ""
+        verifyCodeError = null
+    }
+
+    /**
+     * Fix 2 — submits the pasted token for the authenticated user's own
+     * userId (already available from currentUser, loaded via /auth/me or
+     * login) to POST /auth/verify. On success, refreshes /auth/me so the
+     * email-verified badge updates immediately. On a 400 (invalid/expired
+     * token), shows a precise error instead of a generic one.
+     */
+    fun submitVerificationCode() {
+        val userId = currentUser?.id ?: return
+        val token = verificationCodeInput.trim()
+        if (token.isBlank()) {
+            verifyCodeError = "Ingresa el código recibido por correo"
+            return
+        }
+        viewModelScope.launch {
+            isVerifyingCode = true
+            verifyCodeError = null
+            try {
+                val success = repository.verifyEmail(userId, token)
+                if (success) {
+                    isVerificationDialogOpen = false
+                    verificationCodeInput = ""
+                    try {
+                        currentUser = repository.getMe()
+                    } catch (_: Exception) {
+                        // non-fatal: keep showing the last known state
+                    }
+                } else {
+                    verifyCodeError = "Código inválido o expirado"
+                }
+            } catch (e: Exception) {
+                verifyCodeError = e.message ?: "No se pudo verificar el código"
+            } finally {
+                isVerifyingCode = false
+            }
+        }
+    }
 
     fun uploadImage(imageBytes: ByteArray, fileName: String, onSuccess: (String) -> Unit) {
         viewModelScope.launch {

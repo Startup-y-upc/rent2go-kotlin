@@ -31,13 +31,16 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 
 @Composable
 fun ProfileScreen(
     authViewModel: AuthViewModel,
     profileViewModel: ProfileViewModel = viewModel(),
     onLogoutClick: () -> Unit,
-    onKycClick: () -> Unit
+    onKycClick: () -> Unit,
+    onTermsClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val user = authViewModel.currentUser
@@ -134,7 +137,7 @@ fun ProfileScreen(
                         }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = user?.fullName ?: "Usuario de Prueba",
                             fontSize = 24.sp,
@@ -146,6 +149,26 @@ fun ProfileScreen(
                             fontSize = 14.sp,
                             color = TextGray
                         )
+                        Text(
+                            text = when (user?.role) {
+                                "OWNER" -> "Propietario"
+                                "RENTER" -> "Arrendatario"
+                                else -> "Tipo de cuenta pendiente de selección"
+                            },
+                            fontSize = 12.sp,
+                            color = TextGray
+                        )
+                    }
+                    // US50/US51/US52 — entry point to the in-app notification feed.
+                    IconButton(
+                        onClick = onNotificationsClick,
+                        modifier = Modifier.testTag("profile_notifications_button")
+                    ) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Notificaciones", tint = Color.White)
+                    }
+                    // US09 — edit own profile (name/phone)
+                    IconButton(onClick = { authViewModel.startEditingProfile() }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar perfil", tint = Color.White)
                     }
                 }
 
@@ -155,9 +178,25 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    StatItem(profileViewModel.completedTrips.toString(), "Viajes")
-                    StatItem(String.format("%.2f", profileViewModel.averageRating), "Valoración")
-                    StatItem("${profileViewModel.acceptanceRate.toInt()}%", "Aceptación")
+                    // K4: mientras carga o si falla, se muestra "—" en vez de un
+                    // valor fabricado (antes 5.0/100.0 aparentaban ser reales).
+                    if (profileViewModel.isLoading) {
+                        StatItem("—", "Viajes")
+                        StatItem("—", "Valoración")
+                        StatItem("—", "Aceptación")
+                    } else {
+                        StatItem(profileViewModel.completedTrips?.toString() ?: "—", "Viajes")
+                        StatItem(profileViewModel.averageRating?.let { String.format("%.2f", it) } ?: "—", "Valoración")
+                        StatItem(profileViewModel.acceptanceRate?.let { "${it.toInt()}%" } ?: "—", "Aceptación")
+                    }
+                }
+                if (profileViewModel.errorMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No se pudo cargar tu reputación",
+                        fontSize = 11.sp,
+                        color = Color(0xFFFF8A80)
+                    )
                 }
             }
         }
@@ -173,11 +212,9 @@ fun ProfileScreen(
                 color = Color.White.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                val hasLocalKyc = !authViewModel.kycDniFrontUrl.isNullOrBlank() &&
-                        !authViewModel.kycDniBackUrl.isNullOrBlank() &&
-                        !authViewModel.kycLicenseUrl.isNullOrBlank()
-                val kycSubmitted = user?.status == "ACTIVE" || user?.status == "VERIFIED" ||
-                        authViewModel.isKycSuccess || hasLocalKyc
+                // K3: refleja el campo real kyc_verified del backend, ya no un
+                // heurístico local basado en status/URLs de documentos subidos.
+                val kycSubmitted = user?.kycVerified == true
                 val emailOk = user?.emailVerified == true
                 val phoneOk = user?.phoneVerified == true
                 val profileUploaded = !user?.profileImageUrl.isNullOrBlank()
@@ -199,11 +236,31 @@ fun ProfileScreen(
                                 fontSize = 16.sp
                             )
                         }
-                        Text(
-                            text = "$verifiedCount / 4",
-                            color = PrimaryCyan,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "$verifiedCount / 4",
+                                color = PrimaryCyan,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // Lightweight refresh affordance — re-fetches /auth/me so the
+                            // verification badges reflect the real backend state after e.g.
+                            // clicking the emailed verification link. No pull-to-refresh
+                            // mechanism previously existed on this screen (Phase 0 finding);
+                            // this is the minimal, dependency-free equivalent of Flutter's
+                            // existing RefreshIndicator on the same screen.
+                            IconButton(
+                                onClick = { authViewModel.refreshCurrentUser() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Actualizar estado de verificación",
+                                    tint = Color.Black.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -214,7 +271,44 @@ fun ProfileScreen(
                         onVerifyClick = onKycClick
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
-                    VerificationItem("Email verificado", emailOk)
+                    VerificationItem(
+                        label = "Email verificado",
+                        isVerified = emailOk,
+                        actionLabel = if (authViewModel.isResendingVerification) "Enviando..." else "Reenviar correo",
+                        onVerifyClick = if (!emailOk && !authViewModel.isResendingVerification) {
+                            { authViewModel.resendVerificationEmail() }
+                        } else null
+                    )
+                    if (authViewModel.resendVerificationMessage != null) {
+                        Text(
+                            text = authViewModel.resendVerificationMessage ?: "",
+                            fontSize = 11.sp,
+                            color = PrimaryCyan,
+                            modifier = Modifier.padding(start = 36.dp, bottom = 4.dp)
+                        )
+                    }
+                    if (authViewModel.resendVerificationError != null) {
+                        Text(
+                            text = authViewModel.resendVerificationError ?: "",
+                            fontSize = 11.sp,
+                            color = Color(0xFFFF4D4D),
+                            modifier = Modifier.padding(start = 36.dp, bottom = 4.dp)
+                        )
+                    }
+                    // Fix 2 — paste-code verification: the user copies the token/code
+                    // received by email and pastes it here to call POST /auth/verify
+                    // directly, as an alternative to a clickable magic link.
+                    if (!emailOk) {
+                        Text(
+                            text = "Ingresar código",
+                            fontSize = 12.sp,
+                            color = PrimaryCyan,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(start = 36.dp, bottom = 4.dp)
+                                .clickable { authViewModel.startEnteringVerificationCode() }
+                        )
+                    }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
                     VerificationItem("Teléfono verificado", phoneOk)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.Black.copy(alpha = 0.05f))
@@ -229,15 +323,34 @@ fun ProfileScreen(
             }
             
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Placeholder for lower section
+
+            // Términos y Condiciones — entry point for TS15/US57, reads the
+            // bundled asset (assets/legal/terms-and-conditions.md) via TermsScreen.
             Surface(
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-                color = Color.White.copy(alpha = 0.4f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onTermsClick() },
+                color = Color.White.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("Configuración de la cuenta", color = Color.Black.copy(alpha = 0.5f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Description,
+                        contentDescription = null,
+                        tint = Color.Black.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Términos y Condiciones",
+                        color = Color.Black.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
                 }
             }
 
@@ -273,6 +386,114 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(140.dp))
         }
     }
+
+    // US09 — Editar perfil propio (nombre, teléfono)
+    if (authViewModel.isEditingProfile) {
+        AlertDialog(
+            onDismissRequest = { authViewModel.cancelEditingProfile() },
+            containerColor = Color.White,
+            title = { Text("Editar perfil", fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = authViewModel.editFullName,
+                        onValueChange = { authViewModel.editFullName = it },
+                        label = { Text("Nombre completo") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = authViewModel.editPhone,
+                        onValueChange = { authViewModel.editPhone = it },
+                        label = { Text("Teléfono") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (authViewModel.profileUpdateError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = authViewModel.profileUpdateError ?: "",
+                            color = Color.Red,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { authViewModel.saveProfile {} },
+                    enabled = !authViewModel.isSavingProfile,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan)
+                ) {
+                    if (authViewModel.isSavingProfile) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    } else {
+                        Text("Guardar", color = Color.White)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { authViewModel.cancelEditingProfile() }) {
+                    Text("Cancelar", color = Color.Black)
+                }
+            }
+        )
+    }
+
+    // Fix 2 — Verificar correo con código pegado (alternativa a un enlace
+    // clicable): el usuario pega aquí el token que recibió por correo y lo
+    // envía a POST /auth/verify junto con su propio userId.
+    if (authViewModel.isVerificationDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { authViewModel.cancelEnteringVerificationCode() },
+            containerColor = Color.White,
+            title = { Text("Verificar correo", fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = {
+                Column {
+                    Text(
+                        "Pega el código que recibiste por correo electrónico.",
+                        fontSize = 13.sp,
+                        color = TextGray
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = authViewModel.verificationCodeInput,
+                        onValueChange = { authViewModel.verificationCodeInput = it },
+                        label = { Text("Código de verificación") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (authViewModel.verifyCodeError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = authViewModel.verifyCodeError ?: "",
+                            color = Color.Red,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { authViewModel.submitVerificationCode() },
+                    enabled = !authViewModel.isVerifyingCode,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryCyan)
+                ) {
+                    if (authViewModel.isVerifyingCode) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    } else {
+                        Text("Verificar", color = Color.White)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { authViewModel.cancelEnteringVerificationCode() }) {
+                    Text("Cancelar", color = Color.Black)
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -284,7 +505,12 @@ fun StatItem(value: String, label: String) {
 }
 
 @Composable
-fun VerificationItem(label: String, isVerified: Boolean, onVerifyClick: (() -> Unit)? = null) {
+fun VerificationItem(
+    label: String,
+    isVerified: Boolean,
+    onVerifyClick: (() -> Unit)? = null,
+    actionLabel: String? = null
+) {
     val isClickable = onVerifyClick != null
     Row(
         modifier = Modifier
@@ -312,7 +538,7 @@ fun VerificationItem(label: String, isVerified: Boolean, onVerifyClick: (() -> U
         if (isClickable) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (isVerified) "Modificar" else "Verificar",
+                text = actionLabel ?: (if (isVerified) "Modificar" else "Verificar"),
                 fontSize = 12.sp,
                 color = PrimaryCyan,
                 fontWeight = FontWeight.Bold

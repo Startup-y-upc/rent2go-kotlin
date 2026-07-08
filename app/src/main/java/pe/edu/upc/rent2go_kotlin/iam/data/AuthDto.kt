@@ -23,6 +23,9 @@ data class LoginResponse(
     val emailVerified: Boolean,
     val phoneVerified: Boolean,
     val twoFactorEnabled: Boolean,
+    // Campo real del backend: siempre serializado como 'kyc_verified' (forzado
+    // con @JsonProperty en UserResource.java, confirmado por lectura directa).
+    @SerialName("kyc_verified") val kycVerified: Boolean = false,
     val profileImageUrl: String? = null
 )
 
@@ -50,6 +53,7 @@ data class RegisterResponse(
     @SerialName("email_verified") val emailVerified: Boolean,
     @SerialName("phone_verified") val phoneVerified: Boolean,
     @SerialName("two_factor_enabled") val twoFactorEnabled: Boolean,
+    @SerialName("kyc_verified") val kycVerified: Boolean = false,
     @SerialName("created_at") val createdAt: String,
     @SerialName("updated_at") val updatedAt: String,
     val token: String? = null // token may be returned on register
@@ -68,8 +72,15 @@ data class MeResponse(
     @SerialName("email_verified") val emailVerified: Boolean,
     @SerialName("phone_verified") val phoneVerified: Boolean,
     @SerialName("two_factor_enabled") val twoFactorEnabled: Boolean,
+    @SerialName("kyc_verified") val kycVerified: Boolean = false,
     @SerialName("created_at") val createdAt: String,
     @SerialName("updated_at") val updatedAt: String
+)
+
+@Serializable
+data class VerifyEmailRequest(
+    val userId: Int,
+    val token: String
 )
 
 @Serializable

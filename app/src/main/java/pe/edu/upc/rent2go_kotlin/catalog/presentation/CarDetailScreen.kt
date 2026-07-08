@@ -22,9 +22,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import pe.edu.upc.rent2go_kotlin.catalog.domain.Vehicle
+import pe.edu.upc.rent2go_kotlin.common.Counterparty
 import pe.edu.upc.rent2go_kotlin.common.DependencyProvider
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.LightBlueBg
 import pe.edu.upc.rent2go_kotlin.common.ui.theme.PrimaryCyan
+import pe.edu.upc.rent2go_kotlin.community.presentation.VerificationItem
 
 @Composable
 fun CarDetailScreen(
@@ -50,7 +52,7 @@ fun CarDetailScreen(
     }
 
     val scrollState = rememberScrollState()
-    var isFavorite by remember { mutableStateOf(false) }
+    val isFavorite = state.isFavorite
 
     Box(modifier = Modifier.fillMaxSize().background(LightBlueBg)) {
         when {
@@ -133,18 +135,18 @@ fun CarDetailScreen(
                                 Surface(
                                     shape = CircleShape,
                                     color = Color.White,
-                                    modifier = Modifier.size(40.dp).clickable { /* Share Action */ }
+                                    modifier = Modifier.size(40.dp).clickable { /* Share Action — K7, baja prioridad, pendiente */ }
                                 ) {
-                                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(10.dp), tint = Color.Black)
+                                    Icon(Icons.Default.Share, contentDescription = "Compartir (próximamente)", modifier = Modifier.padding(10.dp), tint = Color.Black)
                                 }
                                 Surface(
                                     shape = CircleShape,
                                     color = Color.White,
-                                    modifier = Modifier.size(40.dp).clickable { isFavorite = !isFavorite }
+                                    modifier = Modifier.size(40.dp).clickable { viewModel.toggleFavorite(carId) }
                                 ) {
                                     Icon(
                                         if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = null,
+                                        contentDescription = if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
                                         modifier = Modifier.padding(10.dp),
                                         tint = if (isFavorite) Color.Red else Color.Black
                                     )
@@ -302,6 +304,79 @@ fun CarDetailScreen(
                             }
                         }
 
+                        // US76 closure (Sprint 5 fixes remaining scope): owner identity +
+                        // verification badges, resolvable pre-booking via
+                        // GET /api/v1/vehicles/{id}/owner-summary. Reuses VerificationItem
+                        // (ProfileScreen.kt) — the same composable already used for the
+                        // Sprint 5 color-fix work — rather than a new visual style.
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "PROPIETARIO",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OwnerSummarySection(
+                            loading = !state.ownerSummaryLoaded,
+                            owner = state.ownerSummary
+                        )
+
+                        // K6: sección de reseñas/calificación — antes inexistente.
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "RESEÑAS",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = Color.White.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                val rating = state.rating
+                                if (rating != null && rating.count > 0) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "${String.format("%.1f", rating.average)} · ${rating.count} reseñas",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = Color.Black
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+                                if (state.reviews.isEmpty()) {
+                                    Text(
+                                        text = "Este vehículo aún no tiene reseñas",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray
+                                    )
+                                } else {
+                                    state.reviews.take(5).forEachIndexed { index, review ->
+                                        Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+                                            Icon(Icons.Default.Star, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Column {
+                                                Text(text = "${review.rating}/5", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.Black)
+                                                if (!review.comment.isNullOrBlank()) {
+                                                    Text(text = review.comment, fontSize = 12.sp, color = Color.Black.copy(alpha = 0.7f))
+                                                }
+                                            }
+                                        }
+                                        if (index < state.reviews.take(5).lastIndex) {
+                                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color.Black.copy(alpha = 0.08f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(160.dp)) // Padding for bottom bar
                     }
                 }
@@ -368,6 +443,47 @@ fun SpecItem(
         Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color.Black)
         Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
         Text(text = label, fontSize = 12.sp, color = Color.Gray)
+    }
+}
+
+/**
+ * US76 closure (Sprint 5 fixes remaining scope): the vehicle owner's name/verification badges,
+ * resolvable BEFORE any reservation exists (previously only available post-booking via
+ * ReservationResource/ConversationResource's nested counterparty object).
+ *
+ * Loading/error/missing-data are all handled explicitly, per the BRD's fail-open requirement:
+ * - loading: shows a small inline spinner, not a blank space.
+ * - owner == null (vehicle-not-found, network error, or owner has no data on file): shows a
+ *   name-unavailable placeholder plus all three verification items in their unverified state —
+ *   never a crash.
+ */
+@Composable
+fun OwnerSummarySection(loading: Boolean, owner: Counterparty?) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Task 3 restructure: the card holds ONLY the owner's name. Verification
+        // badges/chips live outside it, in a separate row below.
+        Surface(
+            color = Color.White.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (loading) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(color = PrimaryCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Cargando propietario...", fontSize = 13.sp, color = Color.Gray)
+                    }
+                } else {
+                    Text(
+                        text = owner?.fullName ?: "Propietario",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
+                    )
+                }
+            }
+        }
     }
 }
 
